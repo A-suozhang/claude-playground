@@ -37,41 +37,68 @@ function buildMap(size) {
 }
 
 /**
+ * Convert offset coordinates to axial coordinates (hexagon math)
+ * @param {number} row - Row (0-indexed)
+ * @param {number} col - Column (0-indexed)
+ * @returns {Object} Axial coordinates {q, r}
+ */
+function offsetToAxial(row, col) {
+  const q = col - Math.floor(row / 2);
+  const r = row;
+  return { q, r };
+}
+
+/**
+ * Calculate hexagonal distance between two axial coordinates
+ * @param {number} q1 - First q coordinate
+ * @param {number} r1 - First r coordinate
+ * @param {number} q2 - Second q coordinate
+ * @param {number} r2 - Second r coordinate
+ * @returns {number} Distance (adjacent hexes have distance 1)
+ */
+function axialDistance(q1, r1, q2, r2) {
+  const s1 = -q1 - r1;
+  const s2 = -q2 - r2;
+  return (Math.abs(q1 - q2) + Math.abs(r1 - r2) + Math.abs(s1 - s2)) / 2;
+}
+
+/**
  * Compute adjacency graph for hexagonal grid (6 neighbors)
- * Using offset coordinates: even-q layout
+ * Using axial coordinates with proper hexagonal distance
  * @param {number} size - Grid size
  * @returns {Object} Adjacency map: {cellKey: Array<adjacentCellKeys>}
  */
 function computeAdjacency(size) {
   const adjacency = {};
 
+  // Create all tiles and convert to axial coordinates
+  const tiles = [];
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
-      const key = `${row},${col}`;
-      adjacency[key] = [];
-
-      // Hexagonal neighbors (even-q offset coordinates)
-      // 6 directions for hexagons
-      const directions = col % 2 === 0 ? [
-        [-1, -1], [-1, 0],  // top-left, top-right
-        [0, -1],  [0, 1],   // left, right
-        [1, -1],  [1, 0]    // bottom-left, bottom-right
-      ] : [
-        [-1, 0],  [-1, 1],  // top-left, top-right
-        [0, -1],  [0, 1],   // left, right
-        [1, 0],   [1, 1]    // bottom-left, bottom-right
-      ];
-
-      directions.forEach(([dRow, dCol]) => {
-        const newRow = row + dRow;
-        const newCol = col + dCol;
-
-        if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
-          adjacency[key].push(`${newRow},${newCol}`);
-        }
+      tiles.push({
+        key: `${row},${col}`,
+        row, col,
+        axial: offsetToAxial(row, col)
       });
     }
   }
+
+  // For each tile, find neighbors by distance = 1
+  tiles.forEach(tile => {
+    adjacency[tile.key] = [];
+
+    tiles.forEach(other => {
+      if (tile.key !== other.key) {
+        const dist = axialDistance(
+          tile.axial.q, tile.axial.r,
+          other.axial.q, other.axial.r
+        );
+        if (dist === 1) {
+          adjacency[tile.key].push(other.key);
+        }
+      }
+    });
+  });
 
   return adjacency;
 }
@@ -113,8 +140,8 @@ function placeSpecialTiles(tiles, amuletCount) {
 function getUnlockedCells(tiles, adjacency) {
   const unlocked = new Set();
 
-  // Find all revealed tiles
-  const revealedTiles = tiles.filter(tile => tile.revealed);
+  // Find all explored tiles
+  const revealedTiles = tiles.filter(tile => tile.explored);
 
   // Add all revealed tiles
   revealedTiles.forEach(tile => {

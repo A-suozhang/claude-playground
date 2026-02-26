@@ -97,21 +97,33 @@ function initGame(options = {}) {
 
 /**
  * Find a contiguous block of connected cells starting from center
+ * For blockSize=3, ensures all pairs are adjacent (forms a triangle)
  * @param {Object} adjacency - Adjacency map
  * @param {number} gridSize - Grid size
  * @param {number} blockSize - Number of cells needed
  * @returns {Array<string>} Array of cell keys in contiguous block
  */
 function findContiguousBlock(adjacency, gridSize, blockSize) {
-  // Start from center
   const centerRow = Math.floor(gridSize / 2);
   const centerCol = Math.floor(gridSize / 2);
-  const startKey = `${centerRow},${centerCol}`;
+  const centerKey = `${centerRow},${centerCol}`;
 
-  const block = [startKey];
-  const visited = new Set([startKey]);
+  // For blockSize=3, find two neighbors of center that are also adjacent to each other
+  if (blockSize === 3) {
+    const neighbors = adjacency[centerKey];
+    for (let i = 0; i < neighbors.length; i++) {
+      for (let j = i + 1; j < neighbors.length; j++) {
+        if (adjacency[neighbors[i]].includes(neighbors[j])) {
+          return [centerKey, neighbors[i], neighbors[j]];
+        }
+      }
+    }
+  }
 
-  // BFS to expand the block
+  // BFS for other sizes
+  const block = [centerKey];
+  const visited = new Set([centerKey]);
+
   while (block.length < blockSize) {
     const candidates = [];
 
@@ -126,7 +138,6 @@ function findContiguousBlock(adjacency, gridSize, blockSize) {
 
     if (candidates.length === 0) break;
 
-    // Randomly select next cell from candidates
     const nextCell = candidates[Math.floor(Math.random() * candidates.length)];
     block.push(nextCell);
   }
@@ -195,17 +206,13 @@ function placeWordOnCell(cellKey) {
     return { ok: false, error: '领队还未提供词汇' };
   }
 
-  // Get functions from appropriate environment
-  const funcs = (typeof module !== 'undefined' && module.exports) ? {
-    getTile: mapEngine_funcs.getTile,
-    getUnlockedCells: mapEngine_funcs.getUnlockedCells
-  } : {
-    getTile,
-    getUnlockedCells
-  };
+  // Get getTile function
+  const getTileFn = (typeof module !== 'undefined' && module.exports)
+    ? mapEngine_funcs.getTile
+    : getTile;
 
   // Validate cell
-  const tile = funcs.getTile(STATE.map.tiles, cellKey);
+  const tile = getTileFn(STATE.map.tiles, cellKey);
   if (!tile) {
     return { ok: false, error: '选择的位置不存在' };
   }
@@ -214,9 +221,12 @@ function placeWordOnCell(cellKey) {
     return { ok: false, error: '该位置已经被赋值，请选择未探索的格子' };
   }
 
-  // Check if cell is in unlocked region (adjacent to explored cells)
-  const unlockedCells = funcs.getUnlockedCells(STATE.map.tiles, STATE.map.adjacency);
-  if (!unlockedCells.includes(cellKey)) {
+  // Check if cell is adjacent to explored cells
+  const exploredTiles = STATE.map.tiles.filter(t => t.explored);
+  const isAdjacent = exploredTiles.some(t =>
+    STATE.map.adjacency[t.key].includes(cellKey)
+  );
+  if (!isAdjacent) {
     return { ok: false, error: '该位置不相邻已探索区域，请选择相邻格子' };
   }
 
@@ -266,15 +276,11 @@ function checkCellSelectable(cellKey) {
     return { ok: false, error: '当前不是队员选择阶段' };
   }
 
-  const funcs = (typeof module !== 'undefined' && module.exports) ? {
-    getTile: mapEngine_funcs.getTile,
-    getUnlockedCells: mapEngine_funcs.getUnlockedCells
-  } : {
-    getTile,
-    getUnlockedCells
-  };
+  const getTileFn = (typeof module !== 'undefined' && module.exports)
+    ? mapEngine_funcs.getTile
+    : getTile;
 
-  const tile = funcs.getTile(STATE.map.tiles, cellKey);
+  const tile = getTileFn(STATE.map.tiles, cellKey);
   if (!tile) {
     return { ok: false, error: '该位置不存在' };
   }
@@ -283,8 +289,13 @@ function checkCellSelectable(cellKey) {
     return { ok: false, error: '该位置已被赋值' };
   }
 
-  const unlockedCells = funcs.getUnlockedCells(STATE.map.tiles, STATE.map.adjacency);
-  if (!unlockedCells.includes(cellKey)) {
+  // 直接计算可选范围，避免使用全局getUnlockedCells
+  const exploredTiles = STATE.map.tiles.filter(t => t.explored);
+  const isAdjacent = exploredTiles.some(t =>
+    STATE.map.adjacency[t.key].includes(cellKey)
+  );
+
+  if (!isAdjacent) {
     return { ok: false, error: '该位置不可选' };
   }
 
