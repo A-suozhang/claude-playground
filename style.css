@@ -198,10 +198,10 @@ body {
   display: grid;
   grid-template-columns: repeat(6, 70px);
   gap: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: radial-gradient(circle at center, rgba(200, 151, 58, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
   padding: 20px;
   border-radius: var(--radius);
-  border: 1px solid rgba(200, 151, 58, 0.2);
+  border: 2px solid rgba(200, 151, 58, 0.25);
   width: fit-content;
   grid-auto-rows: 60px;
 }
@@ -290,14 +290,20 @@ body {
   opacity: 0.7;
   border-color: var(--accent-green);
   cursor: pointer;
+  box-shadow: 0 0 12px rgba(90, 143, 74, 0.6);
+  transition: all var(--transition-fast);
 }
 
 .cell-adjacent:hover {
   background: var(--accent-green);
-  opacity: 0.9;
+  opacity: 1;
   border-color: var(--accent-green);
-  transform: scale(1.05);
-  box-shadow: 0 0 16px rgba(90, 143, 74, 0.5);
+  transform: scale(1.08);
+  box-shadow: 0 0 20px rgba(90, 143, 74, 0.8);
+}
+
+.cell-adjacent:active {
+  transform: scale(0.98);
 }
 
 /* Unlocked but not adjacent: can be reached later */
@@ -316,9 +322,10 @@ body {
 }
 
 .cell-locked {
-  background: var(--bg-cell);
-  opacity: 0.5;
+  background: rgba(30, 25, 20, 0.8);
+  opacity: 0.4;
   cursor: not-allowed;
+  border-color: rgba(100, 100, 100, 0.3);
 }
 
 .cell-selected {
@@ -332,14 +339,15 @@ body {
   border-color: var(--accent-green);
   color: var(--accent-green);
   cursor: default;
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.08), 0 0 8px rgba(90, 143, 74, 0.3);
 }
 
 /* Exit cell (explored) */
 .cell-exit {
   position: relative;
   border-color: var(--accent-gold);
-  box-shadow: inset 0 0 16px rgba(200, 151, 58, 0.35), 0 0 20px rgba(200, 151, 58, 0.2);
-  background: linear-gradient(135deg, var(--bg-cell-revealed) 0%, rgba(200, 151, 58, 0.1) 100%);
+  background: linear-gradient(135deg, var(--bg-cell-revealed) 0%, rgba(200, 151, 58, 0.15) 100%);
+  animation: exitGlow 2s ease-in-out infinite;
 }
 
 .cell-exit::before {
@@ -493,8 +501,9 @@ body {
 /* Round Counter */
 .round-counter {
   text-align: center;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.2);
+  padding: 16px;
+  background: rgba(200, 151, 58, 0.08);
+  border: 1px solid rgba(200, 151, 58, 0.2);
   border-radius: var(--radius);
   font-size: 1.3rem;
   color: var(--accent-gold);
@@ -502,12 +511,16 @@ body {
 
 .round-counter .label {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .round-counter .value {
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 1.8rem;
   color: var(--accent-gold);
+  display: block;
 }
 
 /* Phase Panels - Base */
@@ -543,13 +556,23 @@ body {
   border-radius: 6px;
   text-align: center;
   margin: -4px -4px 8px -4px;
+  animation: phaseEnter 300ms ease-out;
 }
 
 .phase-panel-header h3 {
-  font-size: 1.3rem;
-  margin: 0 0 4px 0;
-  font-weight: 700;
+  font-size: 1.4rem;
+  margin: 0 0 6px 0;
+  font-weight: 800;
   letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.phase-panel-header h3::before {
+  animation: phaseIconBounce 400ms ease-in-out;
+  display: inline-block;
 }
 
 .phase-panel-header.lead-header {
@@ -563,10 +586,18 @@ body {
 }
 
 .phase-subtitle {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  font-size: 0.9rem;
   margin: 0;
-  opacity: 0.9;
+  font-weight: 600;
+  opacity: 1;
+}
+
+.lead-panel .phase-subtitle {
+  color: var(--accent-gold);
+}
+
+.member-panel .phase-subtitle {
+  color: var(--accent-green);
 }
 
 .phase-panel .instruction {
@@ -577,9 +608,10 @@ body {
 
 .phase-input {
   width: 100%;
-  padding: 10px;
+  padding: 12px 12px 12px 16px;
   background: var(--bg-cell);
   border: 1px solid rgba(200, 151, 58, 0.2);
+  border-left: 3px solid transparent;
   border-radius: 4px;
   color: var(--text-primary);
   font-family: inherit;
@@ -589,10 +621,19 @@ body {
   transition: all var(--transition-fast);
 }
 
+.lead-panel .phase-input {
+  border-left-color: var(--accent-gold);
+}
+
+.member-panel .phase-input {
+  border-left-color: var(--accent-green);
+}
+
 .phase-input:focus {
   outline: none;
   border-color: var(--accent-gold);
-  box-shadow: inset 0 0 8px rgba(200, 151, 58, 0.2);
+  box-shadow: inset 0 0 8px rgba(200, 151, 58, 0.2), 0 0 8px rgba(200, 151, 58, 0.15);
+  background: rgba(40, 35, 25, 0.8);
 }
 
 .current-description {
@@ -631,22 +672,38 @@ body {
 .btn-lead {
   background: var(--accent-gold);
   color: var(--bg-void);
+  box-shadow: 0 4px 12px rgba(200, 151, 58, 0.2);
 }
 
 .btn-lead:hover {
   background: #d4a947;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(200, 151, 58, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(200, 151, 58, 0.5);
+  font-weight: 700;
+}
+
+.btn-lead:active {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(200, 151, 58, 0.3);
 }
 
 /* Member Button - Green */
 .btn-member {
   background: var(--accent-green);
   color: var(--bg-void);
+  box-shadow: 0 4px 12px rgba(90, 143, 74, 0.2);
 }
 
 .btn-member:hover {
   background: #6ba05d;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(90, 143, 74, 0.5);
+  font-weight: 700;
+}
+
+.btn-member:active {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(90, 143, 74, 0.3);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(90, 143, 74, 0.4);
 }
@@ -846,12 +903,15 @@ body {
 }
 
 .turn-error {
-  padding: 8px;
+  padding: 12px 12px 12px 16px;
   background: rgba(154, 58, 58, 0.2);
   border: 1px solid var(--accent-red);
+  border-left: 3px solid var(--accent-red);
   border-radius: 4px;
   color: #ffb3b3;
   font-size: 0.85rem;
+  font-weight: 500;
+  animation: slideInRight 300ms ease-out;
 }
 
 .turn-error.hidden {
@@ -876,17 +936,23 @@ body {
 }
 
 .history-item {
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 4px;
-  border-left: 3px solid var(--accent-gold);
+  border-left: 3px solid var(--accent-green);
   font-size: 0.85rem;
   animation: fadeSlideIn 0.3s ease-out;
+  transition: all var(--transition-fast);
+}
+
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(3px);
 }
 
 .history-item-header {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.9rem;
 }
 
@@ -1078,6 +1144,48 @@ body {
   }
   100% {
     background: rgba(200, 151, 58, 0);
+  }
+}
+
+/* ============= PHASE ANIMATIONS (P1) ============= */
+
+@keyframes phaseIconBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes phaseEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes exitGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(200, 151, 58, 1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(200, 151, 58, 0.6);
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 

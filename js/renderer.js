@@ -386,7 +386,7 @@ function showFeedbackOverlay(message, duration = 2000) {
  * @returns {void}
  */
 function flashScreen(type) {
-  const color = type === 'success' ? 'rgba(90, 143, 74, 0.3)' : 'rgba(154, 58, 58, 0.3)';
+  const color = type === 'success' ? 'rgba(90, 143, 74, 0.4)' : 'rgba(154, 58, 58, 0.4)';
   const overlay = document.createElement('div');
   overlay.style.cssText = `
     position: fixed;
@@ -397,11 +397,11 @@ function flashScreen(type) {
     background: ${color};
     pointer-events: none;
     z-index: 999;
-    animation: flash-fade 0.6s ease-out forwards;
+    animation: flash-fade 0.8s ease-out forwards;
   `;
 
   document.body.appendChild(overlay);
-  setTimeout(() => overlay.remove(), 600);
+  setTimeout(() => overlay.remove(), 800);
 }
 
 /**
