@@ -196,7 +196,7 @@ body {
 
 .map-grid {
   display: grid;
-  grid-template-columns: repeat(6, 70px);
+  grid-template-columns: repeat(var(--grid-size, 6), 70px);
   gap: 0;
   background: radial-gradient(circle at center, rgba(200, 151, 58, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
   padding: 20px;
@@ -219,7 +219,7 @@ body {
   width: 70px;
   height: 70px;
   background: var(--bg-cell);
-  border: 2px solid transparent;
+  border: 3px solid rgba(200, 151, 58, 0.7);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -309,7 +309,7 @@ body {
 /* Unlocked but not adjacent: can be reached later */
 .cell-unlocked {
   background: var(--bg-cell-adjacent);
-  border-color: rgba(90, 143, 74, 0.5);
+  border-color: rgba(90, 143, 74, 0.8);
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -325,7 +325,7 @@ body {
   background: rgba(30, 25, 20, 0.8);
   opacity: 0.4;
   cursor: not-allowed;
-  border-color: rgba(100, 100, 100, 0.3);
+  border-color: rgba(120, 100, 70, 0.7);
 }
 
 .cell-selected {

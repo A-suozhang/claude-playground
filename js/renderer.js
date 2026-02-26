@@ -85,6 +85,10 @@ function showScreen(screenName) {
  * @returns {void}
  */
 function renderAll(state) {
+  // Set CSS variable for dynamic grid columns
+  const gridSize = state.map.size;
+  document.documentElement.style.setProperty('--grid-size', gridSize);
+
   renderMapGrid(state);
   renderGamePhase(state);
   clearHistory();
