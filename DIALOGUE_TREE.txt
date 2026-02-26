@@ -1,0 +1,113 @@
+═══════════════════════════════════════════════════════════════════════════════
+DISCO ELYSIUM DETECTIVE CASE — DIALOGUE TREE MAP
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ node_0: Opening Narration (Detective wakes up, body found, Kim arrives)
+│  └─> node_1: Kim introduces case
+│       └─> node_2: Skill voice (Intellect commentary about unions)
+│            └─> node_3: CHOICE POINT 1 ──────────┬──────────┬─────────────┐
+│                                                  │          │             │
+│    ┌─────────────────────────────────────────────┘          │             │
+│    │                                                         │             │
+│    v                                                         v             v
+│  [INTELLECT PATH]                    [PSYCHE PATH]   [DIRECT PATH]
+│  Analyze the scene (DC 8)           Feel out Kim    Ask Kim directly
+│  └─ Success → node_5, Failure       (DC 6, RED)     (no check)
+│     node_6 (both continue)          ├─ Success      └─> node_4
+│     (morale -1 on failure)          │ □ node_9      └─> node_13
+│     │                                │ └─> union     └─> node_14
+│     v                                │    sympathies └─> CHOICE POINT 2
+│  node_5: Rooftop clue found          │    unlocked       ├─ Money trail
+│  node_6: Cigarette ash analysis      │    (morale +1)    │  node_15
+│  │                                   │                   └─ Politics
+│  └─> CHOICE POINT 2 ◄───────────────+                    node_16
+│      ├─ Investigate rooftops                          (both unlock
+│      │  node_7 (Investigation            └─ Failure   union sympathies
+│      │   success, morale +2)             □ node_10    if node_26)
+│      │  └─> node_17                      └─> Silent
+│      │      Military connection            scene,
+│      │      node_18                        return to
+│      │      ├─ Corporate                   node_4
+│      │      │  node_19 ─┐
+│      │      └─ Fascist   │
+│      │         node_20   │
+│      │         (unlock   │
+│      │          existential)
+│      │                   │
+│      └─ Confront union   │
+│         node_8           │
+│         node_21          │
+│         node_22          │
+│         node_23 ◄────────┘
+│         ├─ Military leads → node_18
+│         └─ Money trail → node_15
+
+CONVERGENCE POINTS:
+═════════════════════════════════════════════════════════════════════════════
+
+├─ CORPORATE ENDING (node_15/node_24)
+│  └─ Embezzlement as motive
+│  └─ Corporate hired killer
+│  └─ Morale +1
+│
+├─ POLITICAL ENDING (node_16/node_26)
+│  └─ Union sympathies / wage cuts
+│  └─ Political assassination
+│  └─ Morale +2
+│  └─ Unlock: Union Sympathies thought
+│
+└─ FASCIST ENDING (node_20/node_28)
+   └─ Military paramilitaries
+   └─ Ideological extremism
+   └─ Morale -1
+   └─ Unlock: Existential Crisis thought
+
+FINAL SCENE:
+═════════════════════════════════════════════════════════════════════════════
+
+All paths converge → node_25: Closing Narration (story ends, no next)
+
+STATS & THOUGHTS FLOW:
+═════════════════════════════════════════════════════════════════════════════
+
+Opening Stats: HP 15/15, Morale 7/10
+
+Unlocks (by choice):
+├─ node_7 success → Detective Instinct thought
+├─ node_9 success → Detective Instinct thought  
+├─ node_20 → Existential Crisis thought
+├─ node_26 → Union Sympathies thought
+└─ Various morale changes based on path
+
+RED CHECKS (locked after 1 attempt):
+═════════════════════════════════════════════════════════════════════════════
+
+Psyche Check (DC 6) at node_3
+  ├─ Success (node_9) → Unlock Detective Instinct, +morale
+  └─ Failure (node_10) → Silent scene, -2 morale
+
+KEY STATS:
+═════════════════════════════════════════════════════════════════════════════
+
+Skill Checks:
+  • Intellect DC 8 (WHITE) → can retry
+    - node_5: Rooftop evidence
+    - On success: Detective Instinct unlocked
+    - On failure: -1 morale
+  
+  • Psyche DC 6 (RED) → locks after attempt
+    - node_9: Kim admits truth
+    - On success: +1 morale, unlock Detective Instinct
+    - On failure: -2 morale
+
+Player Skills Used:
+  • Intellect 3 (baseline)
+  • Psyche 2 (baseline)
+  • Can increase via thought unlocks
+
+TOTAL NODES: 33
+BRANCHES: 3 major paths (Intellect, Psyche, Direct)
+ENDINGS: 3 distinct conclusions
+THOUGHTS UNLOCKABLE: 2 (from main story)
+
+═══════════════════════════════════════════════════════════════════════════════

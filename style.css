@@ -1,0 +1,494 @@
+/* ============================================================================
+   DISCO ELYSIUM — VISUAL THEME
+   ============================================================================ */
+
+:root {
+    /* Color Palette */
+    --bg-void: #0d0d0f;
+    --bg-panel: #1a1a1d;
+    --text-parchment: #d4c4a0;
+    --accent-amber: #c8903a;
+    --hp-orange: #c86420;
+    --morale-blue: #2060a0;
+    --skill-red-border: #cc3333;
+    --skill-white-border: #8899aa;
+    --thought-unlock-glow: #ffa500;
+
+    /* Spacing */
+    --left-panel-width: 220px;
+    --right-panel-width: 320px;
+    --gap: 16px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    background-color: var(--bg-void);
+    color: var(--text-parchment);
+    font-family: 'Cardo', serif;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* ============================================================================
+   LAYOUT: 3-COLUMN GRID
+   ============================================================================ */
+
+.container {
+    display: grid;
+    grid-template-columns: var(--left-panel-width) 1fr var(--right-panel-width);
+    gap: var(--gap);
+    width: 100%;
+    height: 100%;
+    padding: var(--gap);
+    background-color: var(--bg-void);
+}
+
+/* LEFT PANEL */
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background-color: var(--bg-panel);
+    padding: 12px;
+    border: 1px solid var(--accent-amber);
+    overflow-y: auto;
+}
+
+/* CENTER PANEL */
+.center-panel {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-panel);
+    padding: 24px;
+    border: 1px solid var(--accent-amber);
+    overflow-y: auto;
+}
+
+.scene-area {
+    flex: 1;
+}
+
+.scene-text {
+    font-family: 'IM Fell English', serif;
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-parchment);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* RIGHT PANEL */
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background-color: var(--bg-panel);
+    padding: 12px;
+    border: 1px solid var(--accent-amber);
+}
+
+.dialogue-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.dialogue-entry {
+    margin-bottom: 12px;
+    padding: 8px;
+    border-left: 3px solid transparent;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-parchment);
+}
+
+.dialogue-entry.faded {
+    opacity: 0.45;
+    color: #8a7a60;
+}
+
+.dialogue-entry.skill-voice {
+    border-left-color: var(--accent-amber);
+    font-style: italic;
+    color: var(--accent-amber);
+}
+
+.dialogue-entry.narration {
+    border-left-color: var(--morale-blue);
+    color: #7da3d4;
+}
+
+/* ============================================================================
+   STATS SECTION
+   ============================================================================ */
+
+.stats-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-bar {
+    display: grid;
+    grid-template-columns: 30px 1fr 50px;
+    gap: 8px;
+    align-items: center;
+}
+
+.stat-label {
+    font-family: 'IM Fell English', serif;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--accent-amber);
+}
+
+.stat-fill {
+    width: 100%;
+    height: 16px;
+    background-color: #2a2a2d;
+    border: 1px solid var(--accent-amber);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-value {
+    height: 100%;
+    background-color: var(--accent-amber);
+    transition: width 0.3s ease;
+}
+
+.hp-bar .stat-value {
+    background-color: var(--hp-orange);
+}
+
+.morale-bar .stat-value {
+    background-color: var(--morale-blue);
+}
+
+.stat-text {
+    font-family: 'IM Fell English', serif;
+    font-size: 11px;
+    text-align: right;
+    color: var(--text-parchment);
+}
+
+/* ============================================================================
+   THOUGHTS SECTION
+   ============================================================================ */
+
+.thoughts-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.thoughts-title {
+    font-family: 'IM Fell English', serif;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--accent-amber);
+    border-bottom: 1px solid var(--accent-amber);
+    padding-bottom: 6px;
+}
+
+.thoughts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.thought-item {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #2a2a2d;
+    border: 2px solid #4a4a4d;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.thought-item:hover {
+    border-color: var(--accent-amber);
+}
+
+.thought-item.unlocked {
+    border-color: var(--accent-amber);
+    background-color: #3a3a2d;
+    box-shadow: 0 0 8px rgba(200, 144, 58, 0.5);
+}
+
+.thought-item.locked {
+    color: #4a4a4d;
+}
+
+/* ============================================================================
+   CHOICES CONTAINER
+   ============================================================================ */
+
+.choices-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--accent-amber);
+}
+
+.choice-button {
+    padding: 10px;
+    background-color: transparent;
+    border: 1px solid var(--skill-white-border);
+    color: var(--text-parchment);
+    font-family: 'Cardo', serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.choice-button:hover:not(:disabled) {
+    background-color: rgba(136, 153, 170, 0.1);
+    border-color: var(--accent-amber);
+}
+
+.choice-button:focus {
+    outline: 2px solid var(--accent-amber);
+    outline-offset: -2px;
+}
+
+.choice-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.choice-skill-red {
+    border-color: var(--skill-red-border) !important;
+    color: var(--skill-red-border);
+}
+
+.choice-skill-red:hover:not(:disabled) {
+    background-color: rgba(204, 51, 51, 0.1);
+}
+
+.choice-skill-white {
+    border-color: var(--skill-white-border) !important;
+}
+
+.choice-skill-white:hover:not(:disabled) {
+    background-color: rgba(136, 153, 170, 0.1);
+}
+
+.choice-locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #4a4a4d;
+}
+
+/* ============================================================================
+   SCREEN FLASH (Success/Failure)
+   ============================================================================ */
+
+.screen-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    pointer-events: none;
+    z-index: 100;
+}
+
+@keyframes flash-fade {
+    0% {
+        background-color: currentColor;
+        opacity: 0.6;
+    }
+    100% {
+        background-color: currentColor;
+        opacity: 0;
+    }
+}
+
+.screen-flash.flash-success {
+    animation: flash-fade 0.6s ease-out;
+    color: #22aa22;
+}
+
+.screen-flash.flash-failure {
+    animation: flash-fade 0.6s ease-out;
+    color: #cc3333;
+}
+
+/* ============================================================================
+   SKILL CHECK MODAL
+   ============================================================================ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.skill-check-dialog {
+    background-color: var(--bg-panel);
+    border: 2px solid var(--accent-amber);
+    padding: 24px;
+    max-width: 300px;
+    text-align: center;
+}
+
+.skill-check-title {
+    font-family: 'IM Fell English', serif;
+    font-size: 18px;
+    color: var(--accent-amber);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+}
+
+.dice-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 24px 0;
+}
+
+.dice {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #2a2a2d;
+    border: 2px solid var(--accent-amber);
+    font-family: 'IM Fell English', serif;
+    font-size: 28px;
+    color: var(--accent-amber);
+    font-weight: bold;
+}
+
+.dice-plus {
+    font-size: 24px;
+    color: var(--accent-amber);
+}
+
+.skill-check-result {
+    margin: 16px 0;
+    font-family: 'Cardo', serif;
+    font-size: 14px;
+    color: var(--text-parchment);
+    min-height: 40px;
+}
+
+.skill-check-continue {
+    padding: 10px 20px;
+    background-color: transparent;
+    border: 1px solid var(--accent-amber);
+    color: var(--accent-amber);
+    font-family: 'Cardo', serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 8px;
+}
+
+.skill-check-continue:hover {
+    background-color: rgba(200, 144, 58, 0.1);
+    border-color: var(--accent-amber);
+}
+
+/* ============================================================================
+   SCROLLBARS (Custom for dark theme)
+   ============================================================================ */
+
+.dialogue-feed::-webkit-scrollbar,
+.left-panel::-webkit-scrollbar,
+.center-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.dialogue-feed::-webkit-scrollbar-track,
+.left-panel::-webkit-scrollbar-track,
+.center-panel::-webkit-scrollbar-track {
+    background-color: #1a1a1d;
+}
+
+.dialogue-feed::-webkit-scrollbar-thumb,
+.left-panel::-webkit-scrollbar-thumb,
+.center-panel::-webkit-scrollbar-thumb {
+    background-color: var(--accent-amber);
+    border-radius: 2px;
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes dice-roll {
+    0%, 100% { transform: rotateX(0deg) rotateY(0deg); }
+    50% { transform: rotateX(20deg) rotateY(20deg); }
+}
+
+.dice.rolling {
+    animation: dice-roll 0.1s linear infinite;
+}
+
+/* ============================================================================
+   ACCESSIBILITY: prefers-reduced-motion
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .dice.rolling {
+        animation: none;
+    }
+
+    @keyframes flash-fade {
+        0%, 100% {
+            opacity: 0;
+        }
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE (for smaller screens)
+   ============================================================================ */
+
+@media (max-width: 1400px) {
+    .container {
+        grid-template-columns: 200px 1fr 280px;
+        gap: 8px;
+        padding: 8px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .container {
+        grid-template-columns: 180px 1fr 260px;
+    }
+}
