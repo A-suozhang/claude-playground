@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landmarks 网页游戏</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="screen setup-screen">
+      <div class="setup-container">
+        <h1>Landmarks</h1>
+        <p class="setup-subtitle">合作探索地图的秘密</p>
+
+        <div class="game-settings">
+          <h2>游戏设置</h2>
+
+          <div class="setting-group">
+            <label for="grid-size-input">地图大小 (×)</label>
+            <input id="grid-size-input" type="number" min="4" max="12" value="6" class="setting-input">
+          </div>
+
+          <div class="setting-group">
+            <label for="exit-count-input">出口数量</label>
+            <input id="exit-count-input" type="number" min="1" max="5" value="1" class="setting-input">
+          </div>
+
+          <button id="btn-start-game" class="btn btn-start-game">开始游戏</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen game-screen hidden">
+      <div class="game-container">
+        <!-- Map Section -->
+        <div class="map-section">
+          <div id="map-grid" class="map-grid hexagon-grid">
+            <!-- Hexagonal cells will be generated -->
+          </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+          <!-- Current Phase Indicator -->
+          <div class="phase-indicator">
+            <div id="phase-label" class="phase-label">领队阶段</div>
+            <div id="phase-description" class="phase-description"></div>
+          </div>
+
+          <!-- Round Counter -->
+          <div class="round-counter">
+            <span class="label">第</span>
+            <span id="round-count" class="value">0</span>
+            <span class="label">轮</span>
+          </div>
+
+          <!-- Lead Phase Panel -->
+          <div id="lead-panel" class="phase-panel lead-panel">
+            <div class="phase-panel-header lead-header">
+              <h3>👑 领队</h3>
+              <p class="phase-subtitle">描述词汇，指引队员</p>
+            </div>
+
+            <input
+              id="lead-word-input"
+              type="text"
+              class="phase-input lead-input"
+              placeholder="输入词汇..."
+              maxlength="30"
+            />
+
+            <button id="btn-submit-lead" class="btn btn-submit-phase btn-lead">提交词汇</button>
+          </div>
+
+          <!-- Member Phase Panel -->
+          <div id="member-panel" class="phase-panel member-panel hidden">
+            <div class="phase-panel-header member-header">
+              <h3>🎯 队员</h3>
+              <p class="phase-subtitle">选择合适的格子</p>
+            </div>
+
+            <div class="current-word">
+              <label>📝 词汇</label>
+              <div id="current-word-text" class="word-text"></div>
+            </div>
+
+            <div class="cell-selection-hint">
+              <label>📍 选择的格子</label>
+              <span id="selected-cell-text" class="cell-coordinate">未选择</span>
+            </div>
+
+            <button id="btn-assign-word" class="btn btn-submit-phase btn-member">确认放置</button>
+          </div>
+
+          <!-- Error Display -->
+          <div id="turn-error" class="turn-error hidden"></div>
+
+          <!-- Game History -->
+          <div class="history-section">
+            <h3>探索历史</h3>
+            <div id="history-list" class="history-list">
+              <!-- Entries will be added -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="screen end-screen hidden">
+      <div class="end-container">
+        <h1 id="end-title">游戏结束</h1>
+        <div class="end-stats">
+          <div class="end-stat">
+            <span class="end-label">总轮数</span>
+            <span id="end-rounds" class="end-value">0</span>
+          </div>
+          <div class="end-stat">
+            <span class="end-label">已探索格子</span>
+            <span id="end-explored" class="end-value">0</span>
+          </div>
+        </div>
+        <div id="end-message" class="end-message">
+          <!-- Message will be set -->
+        </div>
+        <button id="btn-play-again" class="btn btn-play-again">再来一局</button>
+      </div>
+    </div>
+
+    <!-- Feedback Overlay -->
+    <div id="feedback-overlay" class="feedback-overlay hidden">
+      <div class="feedback-content">
+        <div id="feedback-text" class="feedback-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="data/vocabularies.js"></script>
+  <script src="js/vocabulary.js"></script>
+  <script src="js/mapEngine.js"></script>
+  <script src="js/gameEngine.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/controller.js"></script>
+</body>
+</html>
