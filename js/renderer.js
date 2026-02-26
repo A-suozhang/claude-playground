@@ -85,9 +85,28 @@ function showScreen(screenName) {
  * @returns {void}
  */
 function renderAll(state) {
-  // Set CSS variable for dynamic grid columns
+  // Set dynamic grid columns based on map size (inline style to override CSS)
   const gridSize = state.map.size;
-  document.documentElement.style.setProperty('--grid-size', gridSize);
+
+  // Calculate cell size: scale proportionally
+  // For gridSize=6: columnWidth≈83px; for gridSize=12: columnWidth≈42px
+  const minCellSize = 40;
+  const baseCellSize = 83;
+  const baseGridSize = 6;
+  const containerWidth = baseCellSize * baseGridSize; // = 498px
+  const columnWidth = Math.max(minCellSize, Math.floor(containerWidth / gridSize));
+
+  els.mapGrid.style.gridTemplateColumns = `repeat(${gridSize}, ${columnWidth}px)`;
+
+  // Set grid-auto-rows to match column width for square aspect ratio
+  els.mapGrid.style.gridAutoRows = `${columnWidth}px`;
+
+  // Row-gap scales with cell size for hexagon overlap (geometric constant: 0.5 ratio)
+  const hexagonOverlapRatio = 0.5;
+  els.mapGrid.style.rowGap = `${-columnWidth * hexagonOverlapRatio}px`;
+
+  // Update cell dimensions CSS variable
+  document.documentElement.style.setProperty('--cell-size-dynamic', `${columnWidth}px`);
 
   renderMapGrid(state);
   renderGamePhase(state);
@@ -103,8 +122,21 @@ function renderAll(state) {
 function renderMapGrid(state) {
   els.mapGrid.innerHTML = '';
 
-  state.map.tiles.forEach(tile => {
+  const gridSize = state.map.size;
+  const cellSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell-size-dynamic').trim()) || 70;
+  const offsetAmount = cellSize * 0.5; // Half cell width for hex offset
+
+  state.map.tiles.forEach((tile, index) => {
     const cell = createCellElement(tile, state);
+
+    // Calculate which row this cell is in
+    const row = Math.floor(index / gridSize);
+
+    // Odd rows (1, 3, 5...) are offset to the right by half cell width for hexagon pattern
+    if (row % 2 === 1) {
+      cell.style.marginLeft = `${offsetAmount}px`;
+    }
+
     els.mapGrid.appendChild(cell);
   });
 }

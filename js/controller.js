@@ -36,12 +36,18 @@ function initController() {
  * @returns {void}
  */
 function onStartGame(event) {
-  // Initialize game with default config (6x6, 3 initial blocks, configurable exits)
-  initGame();
+  // Read user configuration from setup screen
+  const gridSize = parseInt(document.getElementById('grid-size-input').value) || 6;
+  const exitCount = parseInt(document.getElementById('exit-count-input').value) || 1;
+
+  // Initialize game with user settings
+  initGame({ gridSize, exitCount });
+
+  // Cache DOM elements before rendering (needed for renderAll to set styles)
+  cacheElements();
 
   // Render game UI
   renderAll(getState());
-  cacheElements();
 
   // Show game screen
   showScreen('game');
