@@ -1,6 +1,12 @@
 // Controller module: Event binding and coordination between modules
 // Manages lead captain phase (describes) and member phase (assigns word to cell)
 
+// AI Member Mode configuration
+let _aiMemberEnabled = false;
+let _aiApiKey = '';
+let _aiModel = 'qwen/qwen3.5-35b-a3b';
+let _lastAiDecision = null; // Store last AI decision for history display
+
 /**
  * Initialize all event listeners
  * @returns {void}
@@ -12,6 +18,12 @@ function initController() {
     themeToggle.addEventListener('click', onThemeToggle);
   }
   initTheme();
+
+  // AI Member Mode toggle
+  const aiMemberToggle = document.getElementById('ai-member-toggle');
+  if (aiMemberToggle) {
+    aiMemberToggle.addEventListener('change', onAIMemberToggle);
+  }
 
   // Game start menu
   document.querySelectorAll('.btn-start-game').forEach(btn => {
@@ -49,8 +61,30 @@ function onStartGame(event) {
   const numCurseBlocks = parseInt(document.getElementById('curse-blocks-input').value) || 1;
   const numBlessingBlocks = parseInt(document.getElementById('blessing-blocks-input').value) || 1;
 
+  // Read AI configuration
+  _aiMemberEnabled = document.getElementById('ai-member-toggle').checked;
+
+  // Read AI model selection
+  _aiModel = document.getElementById('ai-model-select')?.value || 'qwen/qwen3.5-35b-a3b';
+
+  // Read API Key with priority: input > localStorage > environment
+  const inputKey = document.getElementById('ai-api-key-input')?.value?.trim();
+
+  if (inputKey) {
+    // User provided API key in input
+    _aiApiKey = inputKey;
+    // Save to localStorage for future sessions
+    saveApiKeyToStorage(inputKey);
+  } else {
+    // Try to load from secure sources
+    _aiApiKey = getApiKeyFromSecureSources() || '';
+  }
+
   // Initialize game with user settings
   initGame({ gridSize, exitCount, numCurseBlocks, numBlessingBlocks });
+
+  // Reset AI decision storage at start of new game
+  _lastAiDecision = null;
 
   // Cache DOM elements before rendering (needed for renderAll to set styles)
   cacheElements();
@@ -135,6 +169,11 @@ function onSubmitLead() {
 
   // Update UI to show member selection phase
   renderGamePhase(getState());
+
+  // Trigger AI member turn if enabled
+  if (_aiMemberEnabled) {
+    triggerAIMemberTurn();
+  }
 }
 
 /**
@@ -212,12 +251,19 @@ function onAssignWord() {
   flashScreen('success');
   showFeedbackOverlay(feedbackMsg, 1500);
 
-  // Add to history
+  // Add to history (include AI decision if available)
   const historyEntry = {
     round: updatedState.roundCount,
     word: result.tile.word,
     cellKey: selectedCell
   };
+
+  // Attach AI decision details if this was an AI turn
+  if (_lastAiDecision && _aiMemberEnabled) {
+    historyEntry.aiDecision = _lastAiDecision;
+    _lastAiDecision = null; // Clear after use
+  }
+
   appendHistoryEntry(historyEntry);
 
   // Reset selection
@@ -317,6 +363,165 @@ function onThemeToggle() {
   const currentTheme = getCurrentTheme();
   const newTheme = currentTheme === 'light' ? 'dark' : 'light';
   setTheme(newTheme);
+}
+
+/**
+ * Handle AI member mode toggle
+ * @returns {void}
+ */
+function onAIMemberToggle() {
+  const isChecked = document.getElementById('ai-member-toggle').checked;
+  const apiKeySection = document.getElementById('ai-api-key-section');
+  if (apiKeySection) {
+    if (isChecked) {
+      apiKeySection.classList.remove('hidden');
+    } else {
+      apiKeySection.classList.add('hidden');
+    }
+  }
+}
+
+/**
+ * Display AI decision details in the panel
+ * @param {Object} decision - Decision object with all details
+ * @returns {void}
+ */
+function displayAIDecisionDetails(decision) {
+  const decisionPanel = document.getElementById('ai-decision-panel');
+  if (!decisionPanel) return;
+
+  // Populate Prompt
+  const promptDisplay = document.getElementById('ai-prompt-display');
+  if (promptDisplay) {
+    promptDisplay.value = decision.prompt || '（无Prompt）';
+    promptDisplay.style.height = 'auto';
+    promptDisplay.style.height = Math.min(promptDisplay.scrollHeight, 150) + 'px';
+  }
+
+  // Populate Candidates Analysis
+  const candidatesDisplay = document.getElementById('ai-candidates-display');
+  if (candidatesDisplay) {
+    candidatesDisplay.value = decision.candidatesInfo || '（无候选格子）';
+    candidatesDisplay.style.height = 'auto';
+    candidatesDisplay.style.height = Math.min(candidatesDisplay.scrollHeight, 150) + 'px';
+  }
+
+  // Populate AI Thinking (if present)
+  const thinkingSection = document.getElementById('ai-thinking-section');
+  const thinkingDisplay = document.getElementById('ai-thinking-display');
+  if (decision.thinking && decision.thinking.trim().length > 0) {
+    if (thinkingSection) {
+      thinkingSection.classList.remove('hidden');
+    }
+    if (thinkingDisplay) {
+      thinkingDisplay.value = decision.thinking;
+      thinkingDisplay.style.height = 'auto';
+      thinkingDisplay.style.height = Math.min(thinkingDisplay.scrollHeight, 150) + 'px';
+    }
+  } else {
+    if (thinkingSection) {
+      thinkingSection.classList.add('hidden');
+    }
+  }
+
+  // Populate LLM Response
+  const llmDisplay = document.getElementById('ai-llm-response-display');
+  if (llmDisplay) {
+    llmDisplay.value = decision.llmResponse || '（无响应）';
+    llmDisplay.style.height = 'auto';
+    llmDisplay.style.height = Math.min(llmDisplay.scrollHeight, 150) + 'px';
+  }
+
+  // Populate Final Decision
+  const finalDecision = document.getElementById('ai-final-decision');
+  if (finalDecision) {
+    finalDecision.textContent = decision.strategy || decision.reasoning;
+  }
+
+  // Populate Raw JSON (in details section)
+  const rawJsonDisplay = document.getElementById('ai-raw-json-display');
+  if (rawJsonDisplay) {
+    try {
+      const jsonObj = JSON.parse(decision.rawJson || '{}');
+      rawJsonDisplay.value = JSON.stringify(jsonObj, null, 2);
+    } catch {
+      rawJsonDisplay.value = decision.rawJson || '{}';
+    }
+  }
+
+  // Show the panel
+  decisionPanel.classList.remove('hidden');
+}
+
+/**
+ * Trigger AI member turn (async process)
+ * @returns {void}
+ */
+function triggerAIMemberTurn() {
+  // Use setTimeout to avoid blocking
+  setTimeout(async () => {
+    const state = getState();
+    if (!state || state.gameMode !== 'guess') {
+      return;
+    }
+
+    const thinkingIndicator = document.getElementById('ai-thinking-indicator');
+    const decisionPanel = document.getElementById('ai-decision-panel');
+
+    // Show thinking indicator
+    if (thinkingIndicator) {
+      thinkingIndicator.classList.remove('hidden');
+    }
+
+    // Hide decision panel initially
+    if (decisionPanel) {
+      decisionPanel.classList.add('hidden');
+    }
+
+    try {
+      // Wait a bit for UX feel
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get AI decision with full details
+      const decision = await aiMemberDecide(state, _aiApiKey, _aiModel);
+
+      // Save AI decision for history display
+      _lastAiDecision = decision;
+
+      // Hide thinking indicator
+      if (thinkingIndicator) {
+        thinkingIndicator.classList.add('hidden');
+      }
+
+      // Display decision details
+      displayAIDecisionDetails(decision);
+
+      // Set selected cell visually
+      setSelectedCell(decision.cellKey);
+
+      // Wait for player to see AI's decision and reasoning
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
+      // Auto-submit (call onAssignWord)
+      onAssignWord();
+
+      // Hide decision panel after submission
+      if (decisionPanel) {
+        decisionPanel.classList.add('hidden');
+      }
+    } catch (error) {
+      console.error('AI decision error:', error);
+
+      // Fallback: hide indicators and show error
+      if (thinkingIndicator) {
+        thinkingIndicator.classList.add('hidden');
+      }
+      if (decisionPanel) {
+        decisionPanel.classList.add('hidden');
+      }
+      showTurnError('AI 决策失败，请手动选择格子');
+    }
+  }, 0);
 }
 
 // Expose functions for debugging

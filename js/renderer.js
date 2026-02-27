@@ -362,8 +362,8 @@ function clearTurnError() {
 }
 
 /**
- * Append a history entry
- * @param {Object} entry - History entry {round, description, word, cellKey}
+ * Append a history entry with optional AI decision details
+ * @param {Object} entry - History entry {round, word, cellKey, aiDecision?}
  * @returns {void}
  */
 function appendHistoryEntry(entry) {
@@ -372,9 +372,87 @@ function appendHistoryEntry(entry) {
 
   const header = document.createElement('div');
   header.className = 'history-item-header';
-  header.innerHTML = `<strong>第 ${entry.round} 轮</strong>：${entry.word}`;
+
+  // Check if this entry has AI decision details
+  const hasAiDetails = entry.aiDecision && (
+    entry.aiDecision.prompt ||
+    entry.aiDecision.candidatesInfo ||
+    entry.aiDecision.llmResponse ||
+    entry.aiDecision.strategy
+  );
+
+  const toggleIcon = hasAiDetails ? '<span class="history-item-toggle">▼</span>' : '<span class="history-item-toggle" style="opacity: 0.3;">—</span>';
+  header.innerHTML = `<span><strong>第 ${entry.round} 轮</strong>：${entry.word}</span>${toggleIcon}`;
 
   item.appendChild(header);
+
+  // Add AI decision details if available
+  if (hasAiDetails) {
+    const details = document.createElement('div');
+    details.className = 'history-item-details';
+
+    let detailsHtml = '';
+
+    // Prompt
+    if (entry.aiDecision.prompt) {
+      detailsHtml += `
+        <div class="history-item-detail-section">
+          <label class="history-item-detail-label">📋 Prompt</label>
+          <div class="history-item-detail-value">${escapeHtml(entry.aiDecision.prompt)}</div>
+        </div>
+      `;
+    }
+
+    // Candidates
+    if (entry.aiDecision.candidatesInfo) {
+      detailsHtml += `
+        <div class="history-item-detail-section">
+          <label class="history-item-detail-label">📊 候选格子</label>
+          <div class="history-item-detail-value">${escapeHtml(entry.aiDecision.candidatesInfo)}</div>
+        </div>
+      `;
+    }
+
+    // LLM Response
+    if (entry.aiDecision.llmResponse) {
+      detailsHtml += `
+        <div class="history-item-detail-section">
+          <label class="history-item-detail-label">🧠 LLM响应</label>
+          <div class="history-item-detail-value">${escapeHtml(entry.aiDecision.llmResponse)}</div>
+        </div>
+      `;
+    }
+
+    // Final decision
+    if (entry.aiDecision.strategy || entry.aiDecision.reasoning) {
+      const reasoning = entry.aiDecision.strategy || entry.aiDecision.reasoning;
+      detailsHtml += `
+        <div class="history-item-detail-section">
+          <label class="history-item-detail-label">✅ 最终决策</label>
+          <div class="history-item-detail-value">${escapeHtml(reasoning)}</div>
+        </div>
+      `;
+    }
+
+    details.innerHTML = detailsHtml;
+    item.appendChild(details);
+
+    // Add click handler to toggle
+    header.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = details.classList.contains('open');
+      if (isOpen) {
+        details.classList.remove('open');
+        const toggle = header.querySelector('.history-item-toggle');
+        if (toggle) toggle.classList.remove('open');
+      } else {
+        details.classList.add('open');
+        const toggle = header.querySelector('.history-item-toggle');
+        if (toggle) toggle.classList.add('open');
+      }
+    });
+    header.style.cursor = 'pointer';
+  }
 
   // Prepend to history (newest first)
   if (els.historyList.firstChild) {
@@ -382,6 +460,17 @@ function appendHistoryEntry(entry) {
   } else {
     els.historyList.appendChild(item);
   }
+}
+
+/**
+ * Escape HTML special characters
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 /**

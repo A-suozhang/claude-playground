@@ -42,6 +42,29 @@
             <input id="blessing-blocks-input" type="number" min="0" max="5" value="1" class="setting-input">
           </div>
 
+          <div class="setting-group ai-settings">
+            <label for="ai-member-toggle">
+              <input id="ai-member-toggle" type="checkbox" class="setting-checkbox">
+              启用 AI 队员模式
+            </label>
+            <div id="ai-api-key-section" class="ai-api-key-section hidden">
+              <label for="ai-api-key-input">OpenRouter API Key</label>
+              <input id="ai-api-key-input" type="password" class="setting-input" placeholder="sk-..." maxlength="100">
+              <label for="ai-model-select" class="ai-model-label">AI 模型</label>
+              <select id="ai-model-select" class="setting-input ai-model-select">
+                <option value="qwen/qwen3.5-35b-a3b">Qwen 3.5-35B（付费，稳定）</option>
+                <option value="qwen/qwen3-8b:free">Qwen 3-8B（免费，可能限流）</option>
+              </select>
+              <p class="ai-help-text">
+                🔐 输入后自动保存到浏览器（本地存储，不会上传服务器）
+                <br/>
+                💾 或在根目录创建 .env.local 文件配置（参考 .env.example）
+                <br/>
+                ⚠️ 留空则使用本地降级策略
+              </p>
+            </div>
+          </div>
+
           <button id="btn-start-game" class="btn btn-start-game">开始游戏</button>
         </div>
       </div>
@@ -57,8 +80,8 @@
           </div>
         </div>
 
-        <!-- Side Panel -->
-        <div class="side-panel">
+        <!-- Side Panel (Left) -->
+        <div class="side-panel side-panel-left">
           <!-- Current Phase Indicator -->
           <div class="phase-indicator">
             <div id="phase-label" class="phase-label">领队阶段</div>
@@ -112,18 +135,57 @@
               <span id="selected-cell-text" class="cell-coordinate">未选择</span>
             </div>
 
+            <div id="ai-thinking-indicator" class="ai-thinking-indicator hidden">
+              <span class="ai-spinner"></span>
+              <span>AI 正在思考...</span>
+            </div>
+
+            <div id="ai-decision-panel" class="ai-decision-panel hidden">
+              <h4>🤖 AI 决策过程</h4>
+
+              <div class="ai-section">
+                <label>📋 Prompt 策略</label>
+                <textarea id="ai-prompt-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div class="ai-section">
+                <label>📊 候选格子分析</label>
+                <textarea id="ai-candidates-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div id="ai-thinking-section" class="ai-section hidden">
+                <label>💭 AI 思考过程</label>
+                <textarea id="ai-thinking-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div class="ai-section">
+                <label>🧠 LLM 响应</label>
+                <textarea id="ai-llm-response-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div class="ai-section">
+                <label>✅ 最终决策</label>
+                <div id="ai-final-decision" class="ai-final-decision"></div>
+              </div>
+
+              <details class="ai-toggle-details">
+                <summary>💬 原始 LLM JSON</summary>
+                <textarea id="ai-raw-json-display" class="ai-display-text" readonly></textarea>
+              </details>
+            </div>
+
             <button id="btn-assign-word" class="btn btn-submit-phase btn-member">确认放置</button>
           </div>
 
           <!-- Error Display -->
           <div id="turn-error" class="turn-error hidden"></div>
+        </div>
 
-          <!-- Game History -->
-          <div class="history-section">
-            <h3>探索历史</h3>
-            <div id="history-list" class="history-list">
-              <!-- Entries will be added -->
-            </div>
+        <!-- History Panel (Right) -->
+        <div class="side-panel side-panel-right">
+          <h3 class="history-title">📜 探索历史</h3>
+          <div id="history-list" class="history-list">
+            <!-- Entries will be added -->
           </div>
         </div>
       </div>
@@ -158,12 +220,29 @@
     </div>
   </div>
 
+  <!-- Initialize API Key from storage -->
+  <script>
+    // Pre-fill API key input if it was previously saved
+    document.addEventListener('DOMContentLoaded', function() {
+      const apiKeyInput = document.getElementById('ai-api-key-input');
+      if (apiKeyInput && typeof getApiKeyFromSecureSources === 'function') {
+        const savedKey = getApiKeyFromSecureSources();
+        if (savedKey) {
+          apiKeyInput.value = savedKey;
+        }
+      }
+    });
+  </script>
+
   <!-- Scripts -->
   <script src="data/vocabularies.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/vocabulary.js"></script>
   <script src="js/mapEngine.js"></script>
   <script src="js/gameEngine.js"></script>
   <script src="js/renderer.js"></script>
+  <script src="js/aiMapAnalyzer.js"></script>
+  <script src="js/aiAgent.js"></script>
   <script src="js/controller.js"></script>
 </body>
 </html>
