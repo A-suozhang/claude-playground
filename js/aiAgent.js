@@ -22,6 +22,34 @@ function getAIFuncs() {
 }
 
 /**
+ * Extract thinking/internal reasoning from LLM response
+ * Handles both <thinking></thinking> tags and natural thinking markers
+ * @param {string} rawText - Raw response from LLM
+ * @returns {string} Extracted thinking text, or empty string if none found
+ */
+function extractThinkingFromResponse(rawText) {
+  if (!rawText) return '';
+
+  // Try to extract <thinking>...</thinking> blocks
+  const thinkingMatch = rawText.match(/<thinking>([\s\S]*?)<\/thinking>/i);
+  if (thinkingMatch && thinkingMatch[1]) {
+    return thinkingMatch[1].trim();
+  }
+
+  // Try to extract reasoning before JSON (common pattern)
+  const beforeJsonMatch = rawText.match(/([\s\S]*?)(?={[\s\S]*?"selectedCell"[\s\S]*?})/);
+  if (beforeJsonMatch && beforeJsonMatch[1].trim().length > 0) {
+    const beforeJson = beforeJsonMatch[1].trim();
+    // Only return if it looks like actual reasoning (not just whitespace/noise)
+    if (beforeJson.length > 10) {
+      return beforeJson;
+    }
+  }
+
+  return '';
+}
+
+/**
  * Build the prompt for LLM decision-making
  * @param {string} currentWord - The word to place
  * @param {Array} candidateContexts - Array of {cellKey, contexts: [{word, distance, geometricDistance}]}
@@ -112,10 +140,11 @@ ${candidatesSection}【距离说明】：
  * Call OpenRouter API to get AI decision
  * @param {string} prompt - The prompt to send
  * @param {string} apiKey - OpenRouter API key
+ * @param {string} model - Model ID to use
  * @param {number} timeoutMs - Timeout in milliseconds
  * @returns {Promise<string>} Raw response text from LLM
  */
-async function callLLM(prompt, apiKey, timeoutMs = 15000) {
+async function callLLM(prompt, apiKey, model, timeoutMs = 15000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -127,7 +156,7 @@ async function callLLM(prompt, apiKey, timeoutMs = 15000) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3.5-35b-a3b',
+        model: model,
         messages: [
           {
             role: 'user',
@@ -286,9 +315,10 @@ function formatCandidatesForDisplay(contextsMap) {
  * Main AI decision function (with detailed tracing)
  * @param {Object} state - Current game state
  * @param {string} apiKey - OpenRouter API key (can be empty for fallback-only)
+ * @param {string} model - Model ID to use (default: qwen/qwen3.5-35b-a3b)
  * @returns {Promise<Object>} {cellKey, reasoning, usedFallback, prompt, candidatesInfo, llmResponse, rawJson}
  */
-async function aiMemberDecide(state, apiKey) {
+async function aiMemberDecide(state, apiKey, model = 'qwen/qwen3.5-35b-a3b') {
   const funcs = getAIFuncs();
 
   // Get candidate cells
@@ -318,6 +348,7 @@ async function aiMemberDecide(state, apiKey) {
       usedFallback: true,
       prompt: '（未使用LLM，直接降级）',
       candidatesInfo: candidatesInfo,
+      thinking: '',
       llmResponse: '（已跳过LLM调用）',
       rawJson: '{}',
       strategy: `降级策略：选择与已探索格子直接相邻(1步)最多的格子。\n选中格子: "${selectedCell}"，相邻词汇数: ${contextsMap[selectedCell]?.filter(c => c.distance === 1).length || 0}`
@@ -333,7 +364,7 @@ async function aiMemberDecide(state, apiKey) {
   for (let retryCount = 0; retryCount < maxRetries; retryCount++) {
     try {
       const prompt = buildPrompt(state.currentRound.word, candidateContexts, state);
-      const llmResponse = await callLLM(prompt, apiKey);
+      const llmResponse = await callLLM(prompt, apiKey, model);
       lastResponse = llmResponse;
 
       // Check if response is empty
@@ -347,16 +378,20 @@ async function aiMemberDecide(state, apiKey) {
       lastParsed = parsed;
 
       if (parsed && !parsed.error) {
-        // Success! Return the result
+        // Success! Extract thinking if present
+        const thinking = extractThinkingFromResponse(llmResponse);
+
+        // Return the result
         return {
           cellKey: parsed.selectedCell,
           reasoning: parsed.reasoning,
           usedFallback: false,
           prompt: prompt,
           candidatesInfo: candidatesInfo,
+          thinking: thinking,
           llmResponse: llmResponse,
           rawJson: llmResponse,
-          strategy: `LLM策略: Qwen-3.5-35B 基于语义相关性推理\n选中格子: "${parsed.selectedCell}"\n置信度: ${parsed.confidence.toFixed(2)}${retryCount > 0 ? `\n(重试 ${retryCount}/${maxRetries})` : ''}`
+          strategy: `LLM策略: ${model} 基于语义相关性推理\n选中格子: "${parsed.selectedCell}"\n置信度: ${parsed.confidence.toFixed(2)}${retryCount > 0 ? `\n(重试 ${retryCount}/${maxRetries})` : ''}`
         };
       }
 
@@ -382,12 +417,16 @@ async function aiMemberDecide(state, apiKey) {
   const originalResponse = lastParsed?.rawResponse || lastResponse || '(无响应)';
   const isRateLimited = finalErrorReason.includes('API 配额限制');
 
+  // Try to extract thinking from last response even on failure
+  const thinking = extractThinkingFromResponse(lastResponse || '');
+
   return {
     cellKey: selectedCell,
     reasoning: '推理无效，已降级',
     usedFallback: true,
     prompt: buildPrompt(state.currentRound.word, candidateContexts, state),
     candidatesInfo: candidatesInfo,
+    thinking: thinking,
     llmResponse: isRateLimited
       ? `【⚠️ API 配额限制】${finalErrorReason}\n无法进行推理，已切换到本地启发式算法`
       : `【❌ 解析失败】${finalErrorReason}\n【⚠️ 已重试 ${maxRetries} 次】\n\n【📝 最后一次响应】\n${originalResponse}`,
@@ -401,6 +440,7 @@ async function aiMemberDecide(state, apiKey) {
 // Export functions for browser and Node.js environments
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    extractThinkingFromResponse,
     buildPrompt,
     callLLM,
     parseLLMResponse,

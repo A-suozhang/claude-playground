@@ -4,6 +4,7 @@
 // AI Member Mode configuration
 let _aiMemberEnabled = false;
 let _aiApiKey = '';
+let _aiModel = 'qwen/qwen3.5-35b-a3b';
 let _lastAiDecision = null; // Store last AI decision for history display
 
 /**
@@ -62,6 +63,9 @@ function onStartGame(event) {
 
   // Read AI configuration
   _aiMemberEnabled = document.getElementById('ai-member-toggle').checked;
+
+  // Read AI model selection
+  _aiModel = document.getElementById('ai-model-select')?.value || 'qwen/qwen3.5-35b-a3b';
 
   // Read API Key with priority: input > localStorage > environment
   const inputKey = document.getElementById('ai-api-key-input')?.value?.trim();
@@ -402,6 +406,24 @@ function displayAIDecisionDetails(decision) {
     candidatesDisplay.style.height = Math.min(candidatesDisplay.scrollHeight, 150) + 'px';
   }
 
+  // Populate AI Thinking (if present)
+  const thinkingSection = document.getElementById('ai-thinking-section');
+  const thinkingDisplay = document.getElementById('ai-thinking-display');
+  if (decision.thinking && decision.thinking.trim().length > 0) {
+    if (thinkingSection) {
+      thinkingSection.classList.remove('hidden');
+    }
+    if (thinkingDisplay) {
+      thinkingDisplay.value = decision.thinking;
+      thinkingDisplay.style.height = 'auto';
+      thinkingDisplay.style.height = Math.min(thinkingDisplay.scrollHeight, 150) + 'px';
+    }
+  } else {
+    if (thinkingSection) {
+      thinkingSection.classList.add('hidden');
+    }
+  }
+
   // Populate LLM Response
   const llmDisplay = document.getElementById('ai-llm-response-display');
   if (llmDisplay) {
@@ -461,7 +483,7 @@ function triggerAIMemberTurn() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Get AI decision with full details
-      const decision = await aiMemberDecide(state, _aiApiKey);
+      const decision = await aiMemberDecide(state, _aiApiKey, _aiModel);
 
       // Save AI decision for history display
       _lastAiDecision = decision;

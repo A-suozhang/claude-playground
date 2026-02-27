@@ -50,6 +50,11 @@
             <div id="ai-api-key-section" class="ai-api-key-section hidden">
               <label for="ai-api-key-input">OpenRouter API Key</label>
               <input id="ai-api-key-input" type="password" class="setting-input" placeholder="sk-..." maxlength="100">
+              <label for="ai-model-select" class="ai-model-label">AI 模型</label>
+              <select id="ai-model-select" class="setting-input ai-model-select">
+                <option value="qwen/qwen3.5-35b-a3b">Qwen 3.5-35B（付费，稳定）</option>
+                <option value="qwen/qwen3-8b:free">Qwen 3-8B（免费，可能限流）</option>
+              </select>
               <p class="ai-help-text">
                 🔐 输入后自动保存到浏览器（本地存储，不会上传服务器）
                 <br/>
@@ -146,6 +151,11 @@
               <div class="ai-section">
                 <label>📊 候选格子分析</label>
                 <textarea id="ai-candidates-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div id="ai-thinking-section" class="ai-section hidden">
+                <label>💭 AI 思考过程</label>
+                <textarea id="ai-thinking-display" class="ai-display-text" readonly></textarea>
               </div>
 
               <div class="ai-section">

@@ -1634,6 +1634,19 @@ body {
   }
 }
 
+.ai-model-select {
+  width: 100%;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.ai-model-label {
+  display: block;
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 .ai-help-text {
   font-size: 0.85em;
   color: var(--text-muted);
