@@ -61,7 +61,19 @@ function onStartGame(event) {
 
   // Read AI configuration
   _aiMemberEnabled = document.getElementById('ai-member-toggle').checked;
-  _aiApiKey = document.getElementById('ai-api-key-input').value.trim();
+
+  // Read API Key with priority: input > localStorage > environment
+  const inputKey = document.getElementById('ai-api-key-input')?.value?.trim();
+
+  if (inputKey) {
+    // User provided API key in input
+    _aiApiKey = inputKey;
+    // Save to localStorage for future sessions
+    saveApiKeyToStorage(inputKey);
+  } else {
+    // Try to load from secure sources
+    _aiApiKey = getApiKeyFromSecureSources() || '';
+  }
 
   // Initialize game with user settings
   initGame({ gridSize, exitCount, numCurseBlocks, numBlessingBlocks });

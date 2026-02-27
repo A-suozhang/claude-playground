@@ -50,7 +50,13 @@
             <div id="ai-api-key-section" class="ai-api-key-section hidden">
               <label for="ai-api-key-input">OpenRouter API Key</label>
               <input id="ai-api-key-input" type="password" class="setting-input" placeholder="sk-..." maxlength="100">
-              <p class="ai-help-text">留空则使用本地降级策略</p>
+              <p class="ai-help-text">
+                🔐 输入后自动保存到浏览器（本地存储，不会上传服务器）
+                <br/>
+                💾 或在根目录创建 .env.local 文件配置（参考 .env.example）
+                <br/>
+                ⚠️ 留空则使用本地降级策略
+              </p>
             </div>
           </div>
 
@@ -204,8 +210,23 @@
     </div>
   </div>
 
+  <!-- Initialize API Key from storage -->
+  <script>
+    // Pre-fill API key input if it was previously saved
+    document.addEventListener('DOMContentLoaded', function() {
+      const apiKeyInput = document.getElementById('ai-api-key-input');
+      if (apiKeyInput && typeof getApiKeyFromSecureSources === 'function') {
+        const savedKey = getApiKeyFromSecureSources();
+        if (savedKey) {
+          apiKeyInput.value = savedKey;
+        }
+      }
+    });
+  </script>
+
   <!-- Scripts -->
   <script src="data/vocabularies.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/vocabulary.js"></script>
   <script src="js/mapEngine.js"></script>
   <script src="js/gameEngine.js"></script>
