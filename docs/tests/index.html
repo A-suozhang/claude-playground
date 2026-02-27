@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landmarks Game - Test Runner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+      background: #1a1510;
+      color: #d4c89a;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      color: #c8973a;
+      font-size: 2rem;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .stat {
+      background: #2e2a1e;
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid #c8973a;
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 0.9rem;
+      color: #a89968;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #5a8f4a;
+    }
+
+    .stat.failed .stat-value {
+      color: #9a3a3a;
+    }
+
+    .test-suites {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .suite {
+      background: #232016;
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid rgba(200, 151, 58, 0.1);
+    }
+
+    .suite-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      color: #c8973a;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .suite-status {
+      font-size: 1.5rem;
+    }
+
+    .suite.pass .suite-status::before {
+      content: '✓';
+      color: #5a8f4a;
+    }
+
+    .suite.fail .suite-status::before {
+      content: '✗';
+      color: #9a3a3a;
+    }
+
+    .suite-results {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .result {
+      padding: 0.5rem;
+      border-radius: 4px;
+      border-left: 3px solid #a89968;
+    }
+
+    .result.pass {
+      border-left-color: #5a8f4a;
+      background: rgba(90, 143, 74, 0.1);
+    }
+
+    .result.fail {
+      border-left-color: #9a3a3a;
+      background: rgba(154, 58, 58, 0.1);
+    }
+
+    .error-detail {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      border: 1px solid #9a3a3a;
+      font-size: 0.85rem;
+      color: #ffb3b3;
+      word-break: break-word;
+    }
+
+    .loader {
+      text-align: center;
+      padding: 2rem;
+      font-size: 1.2rem;
+    }
+
+    .loader::after {
+      content: '...';
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Landmarks Game - Test Suite</h1>
+    <p id="status" style="color: #a89968;">Running tests...</p>
+
+    <div id="loader" class="loader"></div>
+
+    <div id="results" style="display: none;">
+      <div class="summary">
+        <div id="stat-total" class="stat">
+          <span class="stat-label">Total Tests</span>
+          <span class="stat-value">-</span>
+        </div>
+        <div id="stat-passed" class="stat">
+          <span class="stat-label">Passed</span>
+          <span class="stat-value">-</span>
+        </div>
+        <div id="stat-failed" class="stat failed">
+          <span class="stat-label">Failed</span>
+          <span class="stat-value">-</span>
+        </div>
+      </div>
+
+      <div class="test-suites" id="test-suites"></div>
+    </div>
+  </div>
+
+  <!-- Load test modules -->
+  <script src="../data/vocabularies.js"></script>
+  <script src="../js/vocabulary.js"></script>
+  <script src="../js/mapEngine.js"></script>
+  <script src="../js/gameEngine.js"></script>
+
+  <script>
+    // Simple test framework for browser
+    const testSuites = {
+      vocabulary: { name: 'Vocabulary Module', pass: 0, total: 0, tests: [] },
+      mapEngine: { name: 'Map Engine Module', pass: 0, total: 0, tests: [] },
+      gameEngine: { name: 'Game Engine Module', pass: 0, total: 0, tests: [] }
+    };
+
+    let globalPass = 0, globalTotal = 0;
+
+    class TestRunner {
+      constructor(suiteName) {
+        this.suite = suiteName;
+        this.tests = [];
+      }
+
+      test(name, fn) {
+        testSuites[this.suite].total++;
+        globalTotal++;
+
+        try {
+          fn();
+          this.tests.push({ name, pass: true });
+          testSuites[this.suite].pass++;
+          globalPass++;
+        } catch (error) {
+          this.tests.push({ name, pass: false, error: error.message });
+        }
+      }
+
+      assert(condition, message) {
+        if (!condition) throw new Error(message);
+      }
+
+      assertEqual(actual, expected, message) {
+        if (actual !== expected) {
+          throw new Error(`${message}\n  Expected: ${expected}\n  Got: ${actual}`);
+        }
+      }
+
+      assertArrayLength(arr, length, message) {
+        if (!Array.isArray(arr) || arr.length !== length) {
+          throw new Error(`${message}\n  Expected length: ${length}\n  Got: ${arr ? arr.length : 'not an array'}`);
+        }
+      }
+
+      finish() {
+        testSuites[this.suite].tests = this.tests;
+      }
+    }
+
+    // ============ RUN TESTS ============
+
+    // Vocabulary Tests
+    const vocabTestRunner = new TestRunner('vocabulary');
+
+    vocabTestRunner.test('getAllWords returns 13 words', () => {
+      const words = getAllWords();
+      vocabTestRunner.assertArrayLength(words, 13, 'Should return exactly 13 words');
+    });
+
+    vocabTestRunner.test('selectTargetWords returns correct count', () => {
+      const selected = selectTargetWords(5);
+      vocabTestRunner.assertArrayLength(selected, 5, 'Should return 5 words');
+    });
+
+    vocabTestRunner.test('findWordByZh finds existing word', () => {
+      const word = findWordByZh('埃菲尔铁塔');
+      vocabTestRunner.assert(word !== null, 'Should find Eiffel Tower');
+    });
+
+    vocabTestRunner.test('getDifficultyConfig works correctly', () => {
+      const easy = getDifficultyConfig('easy');
+      vocabTestRunner.assertEqual(easy.targetCount, 3, 'Easy should have 3 targets');
+    });
+
+    vocabTestRunner.finish();
+
+    // Map Engine Tests
+    const mapTestRunner = new TestRunner('mapEngine');
+
+    mapTestRunner.test('buildMap creates correct structure', () => {
+      const map = buildMap(3);
+      mapTestRunner.assertArrayLength(map.tiles, 9, 'Should have 9 tiles for 3x3 grid');
+    });
+
+    mapTestRunner.test('computeAdjacency creates correct graph', () => {
+      const adjacency = computeAdjacency(3);
+      mapTestRunner.assertArrayLength(adjacency['1,1'], 4, 'Center should have 4 neighbors');
+    });
+
+    mapTestRunner.test('getCenterKey returns correct value', () => {
+      const key = getCenterKey(3);
+      mapTestRunner.assertEqual(key, '1,1', 'Should return "1,1" for 3x3');
+    });
+
+    mapTestRunner.test('getTile finds existing tile', () => {
+      const map = buildMap(3);
+      const tile = getTile(map.tiles, '0,0');
+      mapTestRunner.assert(tile !== null, 'Should find tile');
+    });
+
+    mapTestRunner.finish();
+
+    // Game Engine Tests
+    const gameTestRunner = new TestRunner('gameEngine');
+
+    gameTestRunner.test('initGame initializes state', () => {
+      initGame('normal');
+      const state = _getInternalState();
+      gameTestRunner.assert(state !== null, 'State should be initialized');
+      gameTestRunner.assertEqual(state.phase, 'playing', 'Initial phase should be playing');
+    });
+
+    gameTestRunner.test('selectCell accepts adjacent tiles', () => {
+      initGame('normal');
+      const result = selectCell('0,1');
+      gameTestRunner.assert(result.ok, 'Should accept adjacent tile');
+    });
+
+    gameTestRunner.test('submitDescription accepts text', () => {
+      initGame('normal');
+      const result = submitDescription('test description');
+      gameTestRunner.assert(result.ok, 'Should accept description');
+    });
+
+    gameTestRunner.test('computeScoreDelta decreases with rounds', () => {
+      const round1 = computeScoreDelta(1, 0);
+      const round2 = computeScoreDelta(2, 0);
+      gameTestRunner.assert(round1 > round2, 'Round 1 should be worth more than Round 2');
+    });
+
+    gameTestRunner.finish();
+
+    // Display results
+    function displayResults() {
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('results').style.display = 'block';
+
+      // Update summary
+      document.getElementById('stat-total').querySelector('.stat-value').textContent = globalTotal;
+      document.getElementById('stat-passed').querySelector('.stat-value').textContent = globalPass;
+      document.getElementById('stat-failed').querySelector('.stat-value').textContent = globalTotal - globalPass;
+
+      if (globalPass === globalTotal) {
+        document.getElementById('status').textContent = '✓ All tests passed!';
+        document.getElementById('status').style.color = '#5a8f4a';
+      } else {
+        document.getElementById('status').textContent = `✗ ${globalTotal - globalPass} test(s) failed`;
+        document.getElementById('status').style.color = '#9a3a3a';
+      }
+
+      // Display suites
+      const suitesContainer = document.getElementById('test-suites');
+      Object.values(testSuites).forEach(suite => {
+        const suiteEl = document.createElement('div');
+        suiteEl.className = `suite ${suite.pass === suite.total ? 'pass' : 'fail'}`;
+
+        const title = document.createElement('div');
+        title.className = 'suite-title';
+        title.innerHTML = `
+          <span class="suite-status"></span>
+          <span>${suite.name}</span>
+          <span style="margin-left: auto; font-size: 0.9rem; color: #a89968;">
+            ${suite.pass}/${suite.total}
+          </span>
+        `;
+
+        const results = document.createElement('ul');
+        results.className = 'suite-results';
+
+        suite.tests.forEach(test => {
+          const li = document.createElement('li');
+          li.className = `result ${test.pass ? 'pass' : 'fail'}`;
+          li.textContent = test.pass ? '✓ ' + test.name : '✗ ' + test.name;
+
+          if (!test.pass) {
+            const error = document.createElement('div');
+            error.className = 'error-detail';
+            error.textContent = test.error;
+            li.appendChild(error);
+          }
+
+          results.appendChild(li);
+        });
+
+        suiteEl.appendChild(title);
+        suiteEl.appendChild(results);
+        suitesContainer.appendChild(suiteEl);
+      });
+    }
+
+    // Run after DOM loads
+    setTimeout(displayResults, 500);
+  </script>
+</body>
+</html>
