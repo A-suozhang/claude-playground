@@ -355,6 +355,60 @@ function onAIMemberToggle() {
 }
 
 /**
+ * Display AI decision details in the panel
+ * @param {Object} decision - Decision object with all details
+ * @returns {void}
+ */
+function displayAIDecisionDetails(decision) {
+  const decisionPanel = document.getElementById('ai-decision-panel');
+  if (!decisionPanel) return;
+
+  // Populate Prompt
+  const promptDisplay = document.getElementById('ai-prompt-display');
+  if (promptDisplay) {
+    promptDisplay.value = decision.prompt || '（无Prompt）';
+    promptDisplay.style.height = 'auto';
+    promptDisplay.style.height = Math.min(promptDisplay.scrollHeight, 150) + 'px';
+  }
+
+  // Populate Candidates Analysis
+  const candidatesDisplay = document.getElementById('ai-candidates-display');
+  if (candidatesDisplay) {
+    candidatesDisplay.value = decision.candidatesInfo || '（无候选格子）';
+    candidatesDisplay.style.height = 'auto';
+    candidatesDisplay.style.height = Math.min(candidatesDisplay.scrollHeight, 150) + 'px';
+  }
+
+  // Populate LLM Response
+  const llmDisplay = document.getElementById('ai-llm-response-display');
+  if (llmDisplay) {
+    llmDisplay.value = decision.llmResponse || '（无响应）';
+    llmDisplay.style.height = 'auto';
+    llmDisplay.style.height = Math.min(llmDisplay.scrollHeight, 150) + 'px';
+  }
+
+  // Populate Final Decision
+  const finalDecision = document.getElementById('ai-final-decision');
+  if (finalDecision) {
+    finalDecision.textContent = decision.strategy || decision.reasoning;
+  }
+
+  // Populate Raw JSON (in details section)
+  const rawJsonDisplay = document.getElementById('ai-raw-json-display');
+  if (rawJsonDisplay) {
+    try {
+      const jsonObj = JSON.parse(decision.rawJson || '{}');
+      rawJsonDisplay.value = JSON.stringify(jsonObj, null, 2);
+    } catch {
+      rawJsonDisplay.value = decision.rawJson || '{}';
+    }
+  }
+
+  // Show the panel
+  decisionPanel.classList.remove('hidden');
+}
+
+/**
  * Trigger AI member turn (async process)
  * @returns {void}
  */
@@ -367,44 +421,45 @@ function triggerAIMemberTurn() {
     }
 
     const thinkingIndicator = document.getElementById('ai-thinking-indicator');
-    const reasoningText = document.getElementById('ai-reasoning-text');
+    const decisionPanel = document.getElementById('ai-decision-panel');
 
     // Show thinking indicator
     if (thinkingIndicator) {
       thinkingIndicator.classList.remove('hidden');
     }
 
+    // Hide decision panel initially
+    if (decisionPanel) {
+      decisionPanel.classList.add('hidden');
+    }
+
     try {
       // Wait a bit for UX feel
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get AI decision
+      // Get AI decision with full details
       const decision = await aiMemberDecide(state, _aiApiKey);
+
+      // Hide thinking indicator
+      if (thinkingIndicator) {
+        thinkingIndicator.classList.add('hidden');
+      }
+
+      // Display decision details
+      displayAIDecisionDetails(decision);
 
       // Set selected cell visually
       setSelectedCell(decision.cellKey);
 
-      // Show reasoning
-      if (reasoningText) {
-        const reasoningContent = document.getElementById('ai-reasoning-content');
-        if (reasoningContent) {
-          reasoningContent.textContent = decision.reasoning;
-        }
-        reasoningText.classList.remove('hidden');
-      }
-
-      // Wait for player to see AI's choice
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Wait for player to see AI's decision and reasoning
+      await new Promise(resolve => setTimeout(resolve, 1200));
 
       // Auto-submit (call onAssignWord)
       onAssignWord();
 
-      // Hide indicators
-      if (thinkingIndicator) {
-        thinkingIndicator.classList.add('hidden');
-      }
-      if (reasoningText) {
-        reasoningText.classList.add('hidden');
+      // Hide decision panel after submission
+      if (decisionPanel) {
+        decisionPanel.classList.add('hidden');
       }
     } catch (error) {
       console.error('AI decision error:', error);
@@ -413,8 +468,8 @@ function triggerAIMemberTurn() {
       if (thinkingIndicator) {
         thinkingIndicator.classList.add('hidden');
       }
-      if (reasoningText) {
-        reasoningText.classList.add('hidden');
+      if (decisionPanel) {
+        decisionPanel.classList.add('hidden');
       }
       showTurnError('AI 决策失败，请手动选择格子');
     }

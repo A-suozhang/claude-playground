@@ -174,10 +174,30 @@ function fallbackSelection(candidateContexts) {
 }
 
 /**
- * Main AI decision function
+ * Format candidate contexts for display
+ * @param {Object} contextsMap - Map of cellKey to distance contexts
+ * @returns {string} Formatted text for display
+ */
+function formatCandidatesForDisplay(contextsMap) {
+  let text = '';
+  for (const [cellKey, contexts] of Object.entries(contextsMap)) {
+    text += `格子 "${cellKey}":\n`;
+    if (contexts.length === 0) {
+      text += '  （无邻接词汇）\n';
+    } else {
+      for (const {word, distance} of contexts) {
+        text += `  - "${word}" (${distance}步)\n`;
+      }
+    }
+  }
+  return text;
+}
+
+/**
+ * Main AI decision function (with detailed tracing)
  * @param {Object} state - Current game state
  * @param {string} apiKey - OpenRouter API key (can be empty for fallback-only)
- * @returns {Promise<Object>} {cellKey, reasoning, usedFallback}
+ * @returns {Promise<Object>} {cellKey, reasoning, usedFallback, prompt, candidatesInfo, llmResponse, rawJson}
  */
 async function aiMemberDecide(state, apiKey) {
   const funcs = getAIFuncs();
@@ -197,13 +217,21 @@ async function aiMemberDecide(state, apiKey) {
     contexts: contextsMap[cellKey] || []
   }));
 
+  // Format candidate info for display
+  const candidatesInfo = formatCandidatesForDisplay(contextsMap);
+
   // If no API key, use fallback immediately
   if (!apiKey || apiKey.trim() === '') {
     const selectedCell = fallbackSelection(contextsMap);
     return {
       cellKey: selectedCell,
-      reasoning: '程序降级',
-      usedFallback: true
+      reasoning: '无API Key，使用本地启发式算法',
+      usedFallback: true,
+      prompt: '（未使用LLM，直接降级）',
+      candidatesInfo: candidatesInfo,
+      llmResponse: '（已跳过LLM调用）',
+      rawJson: '{}',
+      strategy: `降级策略：选择与已探索格子直接相邻(1步)最多的格子。\n选中格子: "${selectedCell}"，相邻词汇数: ${contextsMap[selectedCell]?.filter(c => c.distance === 1).length || 0}`
     };
   }
 
@@ -219,7 +247,12 @@ async function aiMemberDecide(state, apiKey) {
       return {
         cellKey: parsed.selectedCell,
         reasoning: parsed.reasoning,
-        usedFallback: false
+        usedFallback: false,
+        prompt: prompt,
+        candidatesInfo: candidatesInfo,
+        llmResponse: llmResponse,
+        rawJson: llmResponse,
+        strategy: `LLM策略: llama-3.1-8b 基于语义相关性推理\n选中格子: "${parsed.selectedCell}"\n置信度: ${parsed.confidence.toFixed(2)}`
       };
     }
 
@@ -228,15 +261,25 @@ async function aiMemberDecide(state, apiKey) {
     return {
       cellKey: selectedCell,
       reasoning: '推理无效，已降级',
-      usedFallback: true
+      usedFallback: true,
+      prompt: prompt,
+      candidatesInfo: candidatesInfo,
+      llmResponse: `解析失败，原始响应:\n${llmResponse}`,
+      rawJson: llmResponse,
+      strategy: `JSON解析失败，降级到启发式算法\n选中格子: "${selectedCell}"`
     };
   } catch (error) {
     // API or timeout error, use fallback
     const selectedCell = fallbackSelection(contextsMap);
     return {
       cellKey: selectedCell,
-      reasoning: '网络错误，已降级',
-      usedFallback: true
+      reasoning: `网络/超时错误，已降级 (${error.message})`,
+      usedFallback: true,
+      prompt: buildPrompt(state.currentRound.word, candidateContexts, state),
+      candidatesInfo: candidatesInfo,
+      llmResponse: `API错误: ${error.message}`,
+      rawJson: '{}',
+      strategy: `API调用失败，降级到启发式算法\n选中格子: "${selectedCell}"`
     };
   }
 }
@@ -248,6 +291,7 @@ if (typeof module !== 'undefined' && module.exports) {
     callLLM,
     parseLLMResponse,
     fallbackSelection,
+    formatCandidatesForDisplay,
     aiMemberDecide
   };
 }

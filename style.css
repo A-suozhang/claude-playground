@@ -1601,3 +1601,97 @@ body {
     transform: translateX(0);
   }
 }
+
+/* ============= AI 决策面板 ============= */
+
+.ai-decision-panel {
+  display: block;
+  padding: 12px;
+  background: var(--bg-cell);
+  border: 2px solid var(--accent-purple);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  animation: fadeIn 300ms ease-out;
+}
+
+.ai-decision-panel.hidden {
+  display: none;
+}
+
+.ai-decision-panel h4 {
+  margin: 0 0 10px 0;
+  color: var(--accent-purple);
+  font-size: 0.95em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-section {
+  margin-bottom: 10px;
+}
+
+.ai-section label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.ai-display-text {
+  width: 100%;
+  height: 70px;
+  padding: 8px;
+  background: var(--bg-void);
+  border: 1px solid var(--bg-cell-adjacent);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+  font-size: 0.75em;
+  line-height: 1.4;
+  resize: vertical;
+  overflow-y: auto;
+}
+
+.ai-display-text:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+}
+
+.ai-final-decision {
+  padding: 8px 10px;
+  background: var(--bg-void);
+  border-left: 3px solid var(--accent-green);
+  border-radius: 2px;
+  color: var(--accent-green);
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.ai-toggle-details {
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.ai-toggle-details summary {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  user-select: none;
+  padding: 4px 0;
+  transition: color var(--transition-fast);
+}
+
+.ai-toggle-details summary:hover {
+  color: var(--text-secondary);
+}
+
+.ai-toggle-details[open] summary {
+  color: var(--accent-purple);
+  margin-bottom: 8px;
+}
+
+.ai-toggle-details textarea {
+  height: 100px;
+}

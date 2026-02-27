@@ -129,9 +129,33 @@
               <span>AI 正在思考...</span>
             </div>
 
-            <div id="ai-reasoning-text" class="ai-reasoning-text hidden">
-              <span>💭 推理：</span>
-              <span id="ai-reasoning-content"></span>
+            <div id="ai-decision-panel" class="ai-decision-panel hidden">
+              <h4>🤖 AI 决策过程</h4>
+
+              <div class="ai-section">
+                <label>📋 Prompt 策略</label>
+                <textarea id="ai-prompt-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div class="ai-section">
+                <label>📊 候选格子分析</label>
+                <textarea id="ai-candidates-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div class="ai-section">
+                <label>🧠 LLM 响应</label>
+                <textarea id="ai-llm-response-display" class="ai-display-text" readonly></textarea>
+              </div>
+
+              <div class="ai-section">
+                <label>✅ 最终决策</label>
+                <div id="ai-final-decision" class="ai-final-decision"></div>
+              </div>
+
+              <details class="ai-toggle-details">
+                <summary>💬 原始 LLM JSON</summary>
+                <textarea id="ai-raw-json-display" class="ai-display-text" readonly></textarea>
+              </details>
             </div>
 
             <button id="btn-assign-word" class="btn btn-submit-phase btn-member">确认放置</button>
