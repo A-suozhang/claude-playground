@@ -438,15 +438,19 @@ function appendHistoryEntry(entry) {
     item.appendChild(details);
 
     // Add click handler to toggle
-    header.addEventListener('click', () => {
+    header.addEventListener('click', (e) => {
+      e.stopPropagation();
       const isOpen = details.classList.contains('open');
       if (isOpen) {
         details.classList.remove('open');
-        header.querySelector('.history-item-toggle').classList.remove('open');
+        const toggle = header.querySelector('.history-item-toggle');
+        if (toggle) toggle.classList.remove('open');
       } else {
         details.classList.add('open');
-        header.querySelector('.history-item-toggle').classList.add('open');
+        const toggle = header.querySelector('.history-item-toggle');
+        if (toggle) toggle.classList.add('open');
       }
+      console.log('📜 History item toggled, isOpen:', !isOpen);
     });
     header.style.cursor = 'pointer';
   }

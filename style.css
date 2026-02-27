@@ -1142,20 +1142,22 @@ body {
 }
 
 .history-item-details {
-  display: none;
-  padding: 12px;
+  padding: 0 12px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 0 0 4px 4px;
   border-top: 1px solid rgba(200, 151, 58, 0.1);
   font-size: 0.8rem;
   max-height: 0;
   overflow: hidden;
-  transition: max-height 200ms ease-out;
+  transition: max-height 300ms ease-out, padding 300ms ease-out;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .history-item-details.open {
-  display: block;
-  max-height: 500px;
+  max-height: 600px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .history-item-detail-section {
