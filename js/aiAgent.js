@@ -80,7 +80,7 @@ async function callLLM(prompt, apiKey, timeoutMs = 15000) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.1-8b-instruct:free',
+        model: 'openrouter/free',
         messages: [
           {
             role: 'user',

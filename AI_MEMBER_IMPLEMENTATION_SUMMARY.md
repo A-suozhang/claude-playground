@@ -173,7 +173,7 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    model: 'meta-llama/llama-3.1-8b-instruct:free',
+    model: 'openrouter/free',
     messages: [{role: 'user', content: Prompt}],
     max_tokens: 150,
     temperature: 0.3

@@ -2,7 +2,7 @@
 
 ## 📋 概述
 
-AI Member Mode 允许玩家在设置中启用人工智能队员，由 OpenRouter 的 llama-3.1-8b-instruct 模型自动进行格子选择决策。
+AI Member Mode 允许玩家在设置中启用人工智能队员，由 OpenRouter 的免费模型池（openrouter/free）自动进行格子选择决策。
 
 **核心特性**：
 - ✅ **语义相关性推理**：LLM 基于词语语义和空间距离做决策（非离散的邻接二值判断）
@@ -64,13 +64,13 @@ OpenRouter API 集成 + 决策逻辑。
 | 函数 | 用途 |
 |------|------|
 | `buildPrompt(word, contexts, state)` | 构造 LLM Prompt |
-| `callLLM(prompt, apiKey, timeout)` | 调用 OpenRouter API (llama-3.1-8b-instruct) |
+| `callLLM(prompt, apiKey, timeout)` | 调用 OpenRouter API (openrouter/free 免费模型池) |
 | `parseLLMResponse(rawText, validKeys)` | 解析 JSON，验证 cellKey 合法性 |
 | `fallbackSelection(contexts)` | 降级算法：选直接相邻最多的格子 |
 | `aiMemberDecide(state, apiKey)` | **主入口**，返回 async {cellKey, reasoning, usedFallback} |
 
 **API 配置**：
-- 模型：`meta-llama/llama-3.1-8b-instruct:free`
+- 模型：`openrouter/free`（OpenRouter 免费模型池，自动选择最优可用模型）
 - 超时：15 秒
 - Temperature：0.3（低温度→更确定的推理）
 - Max Tokens：150
@@ -180,7 +180,7 @@ OpenRouter API 集成 + 决策逻辑。
    {"selectedCell":"行,列","reasoning":"理由（15字内）","confidence":0.8}
    ```
 
-2. **LLM 推理**（llama-3.1-8b）
+2. **LLM 推理**（OpenRouter 免费模型）
    - 识别「埃菲尔铁塔」与「罗马斗兽场」都是欧洲地标，语义高度相关
    - 选择格子 "2,3"（距离罗马斗兽场最近）
 
