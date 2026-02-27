@@ -24,7 +24,7 @@ function getAIFuncs() {
 /**
  * Build the prompt for LLM decision-making
  * @param {string} currentWord - The word to place
- * @param {Array} candidateContexts - Array of {cellKey, contexts: [{word, distance}]}
+ * @param {Array} candidateContexts - Array of {cellKey, contexts: [{word, distance, geometricDistance}]}
  * @param {Object} state - Current game state (for explored words)
  * @returns {string} The prompt text
  */
@@ -32,16 +32,17 @@ function buildPrompt(currentWord, candidateContexts, state) {
   const funcs = getAIFuncs();
   const exploredWords = funcs.getExploredWords(state);
 
-  // Build candidate descriptions
+  // Build candidate descriptions with geometric distance info
   let candidatesSection = '';
   for (const {cellKey, contexts} of candidateContexts) {
     candidatesSection += `格子 "${cellKey}"：\n`;
     if (contexts.length === 0) {
       candidatesSection += '  （距离已知词汇过远，无邻接信息）\n';
     } else {
-      for (const {word, distance} of contexts) {
+      for (const {word, distance, geometricDistance} of contexts) {
         const proximityHint = distance === 1 ? '（紧邻）' : '';
-        candidatesSection += `  - 与「${word}」距离${distance}步${proximityHint}\n`;
+        const geoHint = geometricDistance ? `[几何距离: ${Math.round(geometricDistance)}px]` : '';
+        candidatesSection += `  - 与「${word}」距离${distance}步${proximityHint} ${geoHint}\n`;
       }
     }
     candidatesSection += '\n';
@@ -52,8 +53,11 @@ function buildPrompt(currentWord, candidateContexts, state) {
 【领队词汇】：「${currentWord}」
 【地图已有词汇】：${exploredWords.join('、')}
 
-【候选格子】（只能选以下格子之一）：
+【候选格子】（只能选以下格子之一，注意几何距离反映真实空间接近度）：
 ${candidatesSection}【规则】语义越相关→应选择距离更近的格子。请选择最合适的格子。
+注：距离值包括：
+- 步数 = 经过多少个格子的拓扑距离
+- 几何距离 = 实际像素距离（更准确反映空间接近度）
 
 输出 JSON（无其他内容）：
 {"selectedCell":"行,列","reasoning":"理由（15字内）","confidence":0.8}`;
@@ -174,7 +178,7 @@ function fallbackSelection(candidateContexts) {
 }
 
 /**
- * Format candidate contexts for display
+ * Format candidate contexts for display (with geometric distances)
  * @param {Object} contextsMap - Map of cellKey to distance contexts
  * @returns {string} Formatted text for display
  */
@@ -185,8 +189,9 @@ function formatCandidatesForDisplay(contextsMap) {
     if (contexts.length === 0) {
       text += '  （无邻接词汇）\n';
     } else {
-      for (const {word, distance} of contexts) {
-        text += `  - "${word}" (${distance}步)\n`;
+      for (const {word, distance, geometricDistance} of contexts) {
+        const geoInfo = geometricDistance ? ` [${Math.round(geometricDistance)}px]` : '';
+        text += `  - "${word}" (${distance}步${geoInfo})\n`;
       }
     }
   }
