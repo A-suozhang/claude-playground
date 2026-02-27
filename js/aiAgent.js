@@ -318,70 +318,69 @@ async function aiMemberDecide(state, apiKey) {
     };
   }
 
-  // Try to call LLM
-  try {
-    const prompt = buildPrompt(state.currentRound.word, candidateContexts, state);
-    const llmResponse = await callLLM(prompt, apiKey);
+  // Try to call LLM with retry logic
+  const maxRetries = 3;
+  let lastError = null;
+  let lastResponse = null;
+  let lastParsed = null;
 
-    // Check if response is empty
-    if (!llmResponse || llmResponse.trim() === '') {
-      const selectedCell = fallbackSelection(contextsMap);
-      return {
-        cellKey: selectedCell,
-        reasoning: '推理无效，已降级',
-        usedFallback: true,
-        prompt: prompt,
-        candidatesInfo: candidatesInfo,
-        llmResponse: '【❌ 解析失败】LLM 返回空响应\n\n【📝 原始响应】\n(空)',
-        rawJson: '{}',
-        strategy: `JSON解析失败: LLM 返回空响应，无法提取任何内容\n降级到启发式算法\n选中格子: "${selectedCell}"`
-      };
+  for (let retryCount = 0; retryCount < maxRetries; retryCount++) {
+    try {
+      const prompt = buildPrompt(state.currentRound.word, candidateContexts, state);
+      const llmResponse = await callLLM(prompt, apiKey);
+      lastResponse = llmResponse;
+
+      // Check if response is empty
+      if (!llmResponse || llmResponse.trim() === '') {
+        lastError = '空响应';
+        continue; // Retry
+      }
+
+      // Parse response
+      const parsed = parseLLMResponse(llmResponse, candidateCells);
+      lastParsed = parsed;
+
+      if (parsed && !parsed.error) {
+        // Success! Return the result
+        return {
+          cellKey: parsed.selectedCell,
+          reasoning: parsed.reasoning,
+          usedFallback: false,
+          prompt: prompt,
+          candidatesInfo: candidatesInfo,
+          llmResponse: llmResponse,
+          rawJson: llmResponse,
+          strategy: `LLM策略: llama-3.1-8b 基于语义相关性推理\n选中格子: "${parsed.selectedCell}"\n置信度: ${parsed.confidence.toFixed(2)}${retryCount > 0 ? `\n(重试 ${retryCount}/${maxRetries})` : ''}`
+        };
+      }
+
+      // Parsing failed, record error and retry
+      lastError = parsed?.error || '未知错误';
+      lastParsed = parsed;
+      // Continue to next retry
+
+    } catch (error) {
+      // API error, save and retry
+      lastError = error.message;
+      continue;
     }
-
-    // Parse response
-    const parsed = parseLLMResponse(llmResponse, candidateCells);
-
-    if (parsed && !parsed.error) {
-      return {
-        cellKey: parsed.selectedCell,
-        reasoning: parsed.reasoning,
-        usedFallback: false,
-        prompt: prompt,
-        candidatesInfo: candidatesInfo,
-        llmResponse: llmResponse,
-        rawJson: llmResponse,
-        strategy: `LLM策略: llama-3.1-8b 基于语义相关性推理\n选中格子: "${parsed.selectedCell}"\n置信度: ${parsed.confidence.toFixed(2)}`
-      };
-    }
-
-    // If parsing failed, use fallback with error details
-    const selectedCell = fallbackSelection(contextsMap);
-    const errorReason = parsed?.error || '未知错误';
-    const originalResponse = parsed?.rawResponse || llmResponse;
-    return {
-      cellKey: selectedCell,
-      reasoning: '推理无效，已降级',
-      usedFallback: true,
-      prompt: prompt,
-      candidatesInfo: candidatesInfo,
-      llmResponse: `【❌ 解析失败】${errorReason}\n\n【📝 原始响应】\n${originalResponse}`,
-      rawJson: llmResponse,
-      strategy: `JSON解析失败: ${errorReason}\n降级到启发式算法\n选中格子: "${selectedCell}"`
-    };
-  } catch (error) {
-    // API or timeout error, use fallback
-    const selectedCell = fallbackSelection(contextsMap);
-    return {
-      cellKey: selectedCell,
-      reasoning: `网络/超时错误，已降级 (${error.message})`,
-      usedFallback: true,
-      prompt: buildPrompt(state.currentRound.word, candidateContexts, state),
-      candidatesInfo: candidatesInfo,
-      llmResponse: `API错误: ${error.message}`,
-      rawJson: '{}',
-      strategy: `API调用失败，降级到启发式算法\n选中格子: "${selectedCell}"`
-    };
   }
+
+  // All retries exhausted, use fallback
+  const selectedCell = fallbackSelection(contextsMap);
+  const finalErrorReason = lastError || '未知错误';
+  const originalResponse = lastParsed?.rawResponse || lastResponse || '(无响应)';
+
+  return {
+    cellKey: selectedCell,
+    reasoning: '推理无效，已降级',
+    usedFallback: true,
+    prompt: buildPrompt(state.currentRound.word, candidateContexts, state),
+    candidatesInfo: candidatesInfo,
+    llmResponse: `【❌ 解析失败】${finalErrorReason}\n【⚠️ 已重试 ${maxRetries} 次】\n\n【📝 最后一次响应】\n${originalResponse}`,
+    rawJson: lastResponse || '{}',
+    strategy: `JSON解析失败: ${finalErrorReason} (已重试${maxRetries}次)\n降级到启发式算法\n选中格子: "${selectedCell}"`
+  };
 }
 
 // Export functions for browser and Node.js environments
