@@ -293,22 +293,31 @@ function placeWordOnCell(cellKey) {
   }
 
   // CRITICAL: Check if this is an exit BEFORE modifying tile state
-  // If cursed at exit, reject WITHOUT marking explored (so player can try again after collecting blessing)
+  // If cursed at exit, check if we have blessing to counter it
   if (tile.isExit && newCurseValue > 0) {
-    // Change gameMode back to lead phase (user should not continue choosing)
-    STATE.gameMode = 'lead';
-    STATE.currentRound = {
-      leadDescription: null,
-      word: null,
-      selectedCell: null
-    };
+    // At exit: automatically use blessing to counter curse
+    if (newBlessingCount > 0) {
+      // Have blessing - consume it to allow exit
+      newBlessingCount--;
+      newCurseValue--;
+    } else {
+      // No blessing - reject the exit
+      // Change gameMode back to lead phase (user should not continue choosing)
+      STATE.gameMode = 'lead';
+      STATE.currentRound = {
+        leadDescription: null,
+        word: null,
+        selectedCell: null
+      };
 
-    return {
-      ok: false,
-      error: '你被诅咒缠身，无法离开这个地方！必须先找到护身符消除诅咒。',
-      cursedAtExit: true,
-      curseValue: newCurseValue
-    };
+      return {
+        ok: false,
+        error: '你被诅咒缠身，无法离开这个地方！必须先找到护身符消除诅咒。',
+        cursedAtExit: true,
+        curseValue: newCurseValue,
+        blessingCount: newBlessingCount
+      };
+    }
   }
 
   // NOW it's safe to modify state
