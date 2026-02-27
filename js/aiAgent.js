@@ -142,6 +142,12 @@ async function callLLM(prompt, apiKey, timeoutMs = 15000) {
 
     clearTimeout(timeoutId);
 
+    // Handle 429 (Too Many Requests) with special error message
+    if (response.status === 429) {
+      const retryAfter = response.headers?.get?.('Retry-After') || 'unknown';
+      throw new Error(`API 配额限制 (需等待: ${retryAfter}秒)`);
+    }
+
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
@@ -360,9 +366,13 @@ async function aiMemberDecide(state, apiKey) {
       // Continue to next retry
 
     } catch (error) {
-      // API error, save and retry
+      // API error, save and check if retryable
       lastError = error.message;
-      continue;
+      // Don't retry on 429 (rate limit) - would just hit the limit again
+      if (error.message.includes('API 配额限制')) {
+        break; // Exit retry loop, go straight to fallback
+      }
+      continue; // Retry other transient errors
     }
   }
 
@@ -370,6 +380,7 @@ async function aiMemberDecide(state, apiKey) {
   const selectedCell = fallbackSelection(contextsMap);
   const finalErrorReason = lastError || '未知错误';
   const originalResponse = lastParsed?.rawResponse || lastResponse || '(无响应)';
+  const isRateLimited = finalErrorReason.includes('API 配额限制');
 
   return {
     cellKey: selectedCell,
@@ -377,9 +388,13 @@ async function aiMemberDecide(state, apiKey) {
     usedFallback: true,
     prompt: buildPrompt(state.currentRound.word, candidateContexts, state),
     candidatesInfo: candidatesInfo,
-    llmResponse: `【❌ 解析失败】${finalErrorReason}\n【⚠️ 已重试 ${maxRetries} 次】\n\n【📝 最后一次响应】\n${originalResponse}`,
+    llmResponse: isRateLimited
+      ? `【⚠️ API 配额限制】${finalErrorReason}\n无法进行推理，已切换到本地启发式算法`
+      : `【❌ 解析失败】${finalErrorReason}\n【⚠️ 已重试 ${maxRetries} 次】\n\n【📝 最后一次响应】\n${originalResponse}`,
     rawJson: lastResponse || '{}',
-    strategy: `JSON解析失败: ${finalErrorReason} (已重试${maxRetries}次)\n降级到启发式算法\n选中格子: "${selectedCell}"`
+    strategy: isRateLimited
+      ? `API 配额限制: ${finalErrorReason}\n降级到启发式算法\n选中格子: "${selectedCell}"`
+      : `JSON解析失败: ${finalErrorReason} (已重试${maxRetries}次)\n降级到启发式算法\n选中格子: "${selectedCell}"`
   };
 }
 
