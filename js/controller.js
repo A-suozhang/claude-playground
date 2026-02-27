@@ -1,6 +1,10 @@
 // Controller module: Event binding and coordination between modules
 // Manages lead captain phase (describes) and member phase (assigns word to cell)
 
+// AI Member Mode configuration
+let _aiMemberEnabled = false;
+let _aiApiKey = '';
+
 /**
  * Initialize all event listeners
  * @returns {void}
@@ -12,6 +16,12 @@ function initController() {
     themeToggle.addEventListener('click', onThemeToggle);
   }
   initTheme();
+
+  // AI Member Mode toggle
+  const aiMemberToggle = document.getElementById('ai-member-toggle');
+  if (aiMemberToggle) {
+    aiMemberToggle.addEventListener('change', onAIMemberToggle);
+  }
 
   // Game start menu
   document.querySelectorAll('.btn-start-game').forEach(btn => {
@@ -48,6 +58,10 @@ function onStartGame(event) {
   const exitCount = parseInt(document.getElementById('exit-count-input').value) || 1;
   const numCurseBlocks = parseInt(document.getElementById('curse-blocks-input').value) || 1;
   const numBlessingBlocks = parseInt(document.getElementById('blessing-blocks-input').value) || 1;
+
+  // Read AI configuration
+  _aiMemberEnabled = document.getElementById('ai-member-toggle').checked;
+  _aiApiKey = document.getElementById('ai-api-key-input').value.trim();
 
   // Initialize game with user settings
   initGame({ gridSize, exitCount, numCurseBlocks, numBlessingBlocks });
@@ -135,6 +149,11 @@ function onSubmitLead() {
 
   // Update UI to show member selection phase
   renderGamePhase(getState());
+
+  // Trigger AI member turn if enabled
+  if (_aiMemberEnabled) {
+    triggerAIMemberTurn();
+  }
 }
 
 /**
@@ -317,6 +336,89 @@ function onThemeToggle() {
   const currentTheme = getCurrentTheme();
   const newTheme = currentTheme === 'light' ? 'dark' : 'light';
   setTheme(newTheme);
+}
+
+/**
+ * Handle AI member mode toggle
+ * @returns {void}
+ */
+function onAIMemberToggle() {
+  const isChecked = document.getElementById('ai-member-toggle').checked;
+  const apiKeySection = document.getElementById('ai-api-key-section');
+  if (apiKeySection) {
+    if (isChecked) {
+      apiKeySection.classList.remove('hidden');
+    } else {
+      apiKeySection.classList.add('hidden');
+    }
+  }
+}
+
+/**
+ * Trigger AI member turn (async process)
+ * @returns {void}
+ */
+function triggerAIMemberTurn() {
+  // Use setTimeout to avoid blocking
+  setTimeout(async () => {
+    const state = getState();
+    if (!state || state.gameMode !== 'guess') {
+      return;
+    }
+
+    const thinkingIndicator = document.getElementById('ai-thinking-indicator');
+    const reasoningText = document.getElementById('ai-reasoning-text');
+
+    // Show thinking indicator
+    if (thinkingIndicator) {
+      thinkingIndicator.classList.remove('hidden');
+    }
+
+    try {
+      // Wait a bit for UX feel
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get AI decision
+      const decision = await aiMemberDecide(state, _aiApiKey);
+
+      // Set selected cell visually
+      setSelectedCell(decision.cellKey);
+
+      // Show reasoning
+      if (reasoningText) {
+        const reasoningContent = document.getElementById('ai-reasoning-content');
+        if (reasoningContent) {
+          reasoningContent.textContent = decision.reasoning;
+        }
+        reasoningText.classList.remove('hidden');
+      }
+
+      // Wait for player to see AI's choice
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Auto-submit (call onAssignWord)
+      onAssignWord();
+
+      // Hide indicators
+      if (thinkingIndicator) {
+        thinkingIndicator.classList.add('hidden');
+      }
+      if (reasoningText) {
+        reasoningText.classList.add('hidden');
+      }
+    } catch (error) {
+      console.error('AI decision error:', error);
+
+      // Fallback: hide indicators and show error
+      if (thinkingIndicator) {
+        thinkingIndicator.classList.add('hidden');
+      }
+      if (reasoningText) {
+        reasoningText.classList.add('hidden');
+      }
+      showTurnError('AI 决策失败，请手动选择格子');
+    }
+  }, 0);
 }
 
 // Expose functions for debugging

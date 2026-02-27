@@ -1483,3 +1483,121 @@ body {
 .theme-toggle:hover .theme-icon {
   transform: rotate(20deg);
 }
+
+/* ============= AI MEMBER MODE ============= */
+
+/* AI Settings in Setup Screen */
+.ai-settings {
+  margin-top: var(--gap);
+  padding: 8px 0;
+  border-top: 1px solid var(--bg-cell-adjacent);
+}
+
+.setting-checkbox {
+  margin-right: 8px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-gold);
+}
+
+#ai-api-key-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bg-cell-adjacent);
+  animation: slideDown 300ms ease-out;
+}
+
+#ai-api-key-section.hidden {
+  display: none;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ai-help-text {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+/* AI Indicators in Member Panel */
+.ai-thinking-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-cell);
+  border: 2px solid var(--accent-purple);
+  border-radius: var(--radius);
+  color: var(--accent-purple);
+  font-size: 0.95em;
+  margin-bottom: 12px;
+  animation: fadeIn 300ms ease-out;
+}
+
+.ai-thinking-indicator.hidden {
+  display: none;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ai-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent-purple);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-reasoning-text {
+  display: block;
+  padding: 10px 12px;
+  background: var(--bg-cell-adjacent);
+  border-left: 3px solid var(--accent-purple);
+  border-radius: 2px;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  font-style: italic;
+  animation: slideInLeft 300ms ease-out;
+}
+
+.ai-reasoning-text.hidden {
+  display: none;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

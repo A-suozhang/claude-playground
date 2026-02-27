@@ -42,6 +42,18 @@
             <input id="blessing-blocks-input" type="number" min="0" max="5" value="1" class="setting-input">
           </div>
 
+          <div class="setting-group ai-settings">
+            <label for="ai-member-toggle">
+              <input id="ai-member-toggle" type="checkbox" class="setting-checkbox">
+              启用 AI 队员模式
+            </label>
+            <div id="ai-api-key-section" class="ai-api-key-section hidden">
+              <label for="ai-api-key-input">OpenRouter API Key</label>
+              <input id="ai-api-key-input" type="password" class="setting-input" placeholder="sk-..." maxlength="100">
+              <p class="ai-help-text">留空则使用本地降级策略</p>
+            </div>
+          </div>
+
           <button id="btn-start-game" class="btn btn-start-game">开始游戏</button>
         </div>
       </div>
@@ -112,6 +124,16 @@
               <span id="selected-cell-text" class="cell-coordinate">未选择</span>
             </div>
 
+            <div id="ai-thinking-indicator" class="ai-thinking-indicator hidden">
+              <span class="ai-spinner"></span>
+              <span>AI 正在思考...</span>
+            </div>
+
+            <div id="ai-reasoning-text" class="ai-reasoning-text hidden">
+              <span>💭 推理：</span>
+              <span id="ai-reasoning-content"></span>
+            </div>
+
             <button id="btn-assign-word" class="btn btn-submit-phase btn-member">确认放置</button>
           </div>
 
@@ -164,6 +186,8 @@
   <script src="js/mapEngine.js"></script>
   <script src="js/gameEngine.js"></script>
   <script src="js/renderer.js"></script>
+  <script src="js/aiMapAnalyzer.js"></script>
+  <script src="js/aiAgent.js"></script>
   <script src="js/controller.js"></script>
 </body>
 </html>
