@@ -63,44 +63,50 @@ function initGame(options = {}) {
     }
   });
 
-  // Randomly mark some cells as exits
-  const exitCells = selectRandomCells(map.tiles, exitCount);
-  exitCells.forEach(cellKey => {
+  // Track used words for prevention of duplicates
+  const usedWords = new Set(initialWords.map(w => w.zh));
+
+  // FIX: Get all available cells first, excluding initial block
+  // Then allocate exits, curses, and blessings from this pool without overlaps
+  const initialCellSet = new Set(initialCells);
+  let availableCells = map.tiles
+    .filter(tile => !initialCellSet.has(tile.key))
+    .map(tile => tile.key);
+
+  // Randomly mark some cells as exits (first allocation)
+  const exitCells = [];
+  const numExits = Math.min(exitCount, availableCells.length);
+  for (let i = 0; i < numExits; i++) {
+    const idx = Math.floor(Math.random() * availableCells.length);
+    const cellKey = availableCells[idx];
+    exitCells.push(cellKey);
+
     const tile = funcs.getTile(map.tiles, cellKey);
     if (tile) {
       tile.isExit = true;
     }
-  });
 
-  // Track used words for prevention of duplicates
-  const usedWords = new Set(initialWords.map(w => w.zh));
+    availableCells.splice(idx, 1);  // Remove from available
+  }
 
-  // Randomly select curse and blessing blocks
+  // Randomly select curse blocks (second allocation)
   const curseBlocks = new Set();
-  const blessingBlocks = new Set();
   const numCurseBlocks = options.numCurseBlocks || 1;
-  const numBlessingBlocks = options.numBlessingBlocks || 1;
-
-  // Get all non-initial tiles (using actual tile keys from map)
-  const initialCellSet = new Set(initialCells);
-  const availableCells = map.tiles
-    .filter(tile => !initialCellSet.has(tile.key))
-    .map(tile => tile.key);
-
-  // Randomly select curse blocks
   for (let i = 0; i < Math.min(numCurseBlocks, availableCells.length); i++) {
     const idx = Math.floor(Math.random() * availableCells.length);
     const cellKey = availableCells[idx];
     curseBlocks.add(cellKey);
-    availableCells.splice(idx, 1);
+    availableCells.splice(idx, 1);  // Remove from available
   }
 
-  // Randomly select blessing blocks (from remaining cells)
+  // Randomly select blessing blocks (third allocation, from remaining cells)
+  const blessingBlocks = new Set();
+  const numBlessingBlocks = options.numBlessingBlocks || 1;
   for (let i = 0; i < Math.min(numBlessingBlocks, availableCells.length); i++) {
     const idx = Math.floor(Math.random() * availableCells.length);
     const cellKey = availableCells[idx];
     blessingBlocks.add(cellKey);
-    availableCells.splice(idx, 1);
+    availableCells.splice(idx, 1);  // Remove from available
   }
 
   // Mark curse and blessing tiles
