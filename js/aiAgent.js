@@ -149,7 +149,7 @@ function parseLLMResponse(rawText, validCellKeys) {
     if (!jsonMatch) {
       return {
         error: '无法从响应中提取JSON格式',
-        rawResponse: rawText.substring(0, 100)
+        rawResponse: rawText
       };
     }
 
@@ -159,7 +159,7 @@ function parseLLMResponse(rawText, validCellKeys) {
     } catch (parseError) {
       return {
         error: `JSON解析错误: ${parseError.message}`,
-        rawResponse: jsonMatch[0].substring(0, 100)
+        rawResponse: rawText
       };
     }
 
@@ -167,14 +167,14 @@ function parseLLMResponse(rawText, validCellKeys) {
     if (!parsed.selectedCell) {
       return {
         error: '缺少必需字段: selectedCell',
-        rawResponse: JSON.stringify(parsed).substring(0, 100)
+        rawResponse: rawText
       };
     }
 
     if (!parsed.reasoning) {
       return {
         error: '缺少必需字段: reasoning',
-        rawResponse: JSON.stringify(parsed).substring(0, 100)
+        rawResponse: rawText
       };
     }
 
@@ -182,7 +182,7 @@ function parseLLMResponse(rawText, validCellKeys) {
     if (!validCellKeys.includes(parsed.selectedCell)) {
       return {
         error: `无效的格子位置: "${parsed.selectedCell}" 不在候选格子中`,
-        rawResponse: JSON.stringify(parsed).substring(0, 100)
+        rawResponse: rawText
       };
     }
 
@@ -194,7 +194,7 @@ function parseLLMResponse(rawText, validCellKeys) {
   } catch (error) {
     return {
       error: `未知错误: ${error.message}`,
-      rawResponse: rawText.substring(0, 100)
+      rawResponse: rawText
     };
   }
 }
@@ -312,13 +312,14 @@ async function aiMemberDecide(state, apiKey) {
     // If parsing failed, use fallback with error details
     const selectedCell = fallbackSelection(contextsMap);
     const errorReason = parsed?.error || '未知错误';
+    const originalResponse = parsed?.rawResponse || llmResponse;
     return {
       cellKey: selectedCell,
       reasoning: '推理无效，已降级',
       usedFallback: true,
       prompt: prompt,
       candidatesInfo: candidatesInfo,
-      llmResponse: `解析失败: ${errorReason}\n\n原始响应:\n${llmResponse}`,
+      llmResponse: `【❌ 解析失败】${errorReason}\n\n【📝 原始响应】\n${originalResponse}`,
       rawJson: llmResponse,
       strategy: `JSON解析失败: ${errorReason}\n降级到启发式算法\n选中格子: "${selectedCell}"`
     };
