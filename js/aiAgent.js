@@ -151,6 +151,14 @@ async function callLLM(prompt, apiKey, timeoutMs = 15000) {
  */
 function parseLLMResponse(rawText, validCellKeys) {
   try {
+    // Check if response is empty
+    if (!rawText || rawText.trim() === '') {
+      return {
+        error: 'LLM 返回空响应',
+        rawResponse: rawText
+      };
+    }
+
     // Try to extract JSON from the response
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -299,6 +307,21 @@ async function aiMemberDecide(state, apiKey) {
   try {
     const prompt = buildPrompt(state.currentRound.word, candidateContexts, state);
     const llmResponse = await callLLM(prompt, apiKey);
+
+    // Check if response is empty
+    if (!llmResponse || llmResponse.trim() === '') {
+      const selectedCell = fallbackSelection(contextsMap);
+      return {
+        cellKey: selectedCell,
+        reasoning: '推理无效，已降级',
+        usedFallback: true,
+        prompt: prompt,
+        candidatesInfo: candidatesInfo,
+        llmResponse: '【❌ 解析失败】LLM 返回空响应\n\n【📝 原始响应】\n(空)',
+        rawJson: '{}',
+        strategy: `JSON解析失败: LLM 返回空响应，无法提取任何内容\n降级到启发式算法\n选中格子: "${selectedCell}"`
+      };
+    }
 
     // Parse response
     const parsed = parseLLMResponse(llmResponse, candidateCells);
