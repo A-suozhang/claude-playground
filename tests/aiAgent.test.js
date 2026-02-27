@@ -93,10 +93,10 @@ assert(parsed !== null, 'Test 6a: Valid JSON is parsed');
 assert(parsed.selectedCell === '0,1', 'Test 6b: Parsed cell is correct');
 assert(parsed.reasoning === '离word1最近', 'Test 6c: Parsed reasoning is correct');
 
-// Test 7: parseLLMResponse rejects invalid cellKey
+// Test 7: parseLLMResponse returns error for invalid cellKey
 const invalidCellResponse = '{"selectedCell":"9,9","reasoning":"bad","confidence":0.5}';
 const invalidParsed = aiAgent.parseLLMResponse(invalidCellResponse, ['0,1', '1,0']);
-assert(invalidParsed === null, 'Test 7: Invalid cellKey is rejected');
+assert(invalidParsed && invalidParsed.error, 'Test 7: Invalid cellKey is rejected with error message');
 
 // Test 8: fallbackSelection picks cell with most direct neighbors
 const fallbackContexts = {

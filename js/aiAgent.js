@@ -140,26 +140,50 @@ async function callLLM(prompt, apiKey, timeoutMs = 15000) {
  * Parse JSON response from LLM
  * @param {string} rawText - Raw text from LLM
  * @param {Array} validCellKeys - List of valid cell keys for validation
- * @returns {Object|null} Parsed response or null if invalid
+ * @returns {Object|null} Parsed response with error info or null if invalid
  */
 function parseLLMResponse(rawText, validCellKeys) {
   try {
     // Try to extract JSON from the response
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      return null;
+      return {
+        error: '无法从响应中提取JSON格式',
+        rawResponse: rawText.substring(0, 100)
+      };
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (parseError) {
+      return {
+        error: `JSON解析错误: ${parseError.message}`,
+        rawResponse: jsonMatch[0].substring(0, 100)
+      };
+    }
 
     // Validate required fields
-    if (!parsed.selectedCell || !parsed.reasoning) {
-      return null;
+    if (!parsed.selectedCell) {
+      return {
+        error: '缺少必需字段: selectedCell',
+        rawResponse: JSON.stringify(parsed).substring(0, 100)
+      };
+    }
+
+    if (!parsed.reasoning) {
+      return {
+        error: '缺少必需字段: reasoning',
+        rawResponse: JSON.stringify(parsed).substring(0, 100)
+      };
     }
 
     // Validate that selectedCell is in valid candidates
     if (!validCellKeys.includes(parsed.selectedCell)) {
-      return null;
+      return {
+        error: `无效的格子位置: "${parsed.selectedCell}" 不在候选格子中`,
+        rawResponse: JSON.stringify(parsed).substring(0, 100)
+      };
     }
 
     return {
@@ -168,7 +192,10 @@ function parseLLMResponse(rawText, validCellKeys) {
       confidence: parsed.confidence || 0.5
     };
   } catch (error) {
-    return null;
+    return {
+      error: `未知错误: ${error.message}`,
+      rawResponse: rawText.substring(0, 100)
+    };
   }
 }
 
@@ -269,7 +296,7 @@ async function aiMemberDecide(state, apiKey) {
     // Parse response
     const parsed = parseLLMResponse(llmResponse, candidateCells);
 
-    if (parsed) {
+    if (parsed && !parsed.error) {
       return {
         cellKey: parsed.selectedCell,
         reasoning: parsed.reasoning,
@@ -282,17 +309,18 @@ async function aiMemberDecide(state, apiKey) {
       };
     }
 
-    // If parsing failed, use fallback
+    // If parsing failed, use fallback with error details
     const selectedCell = fallbackSelection(contextsMap);
+    const errorReason = parsed?.error || '未知错误';
     return {
       cellKey: selectedCell,
       reasoning: '推理无效，已降级',
       usedFallback: true,
       prompt: prompt,
       candidatesInfo: candidatesInfo,
-      llmResponse: `解析失败，原始响应:\n${llmResponse}`,
+      llmResponse: `解析失败: ${errorReason}\n\n原始响应:\n${llmResponse}`,
       rawJson: llmResponse,
-      strategy: `JSON解析失败，降级到启发式算法\n选中格子: "${selectedCell}"`
+      strategy: `JSON解析失败: ${errorReason}\n降级到启发式算法\n选中格子: "${selectedCell}"`
     };
   } catch (error) {
     // API or timeout error, use fallback
