@@ -157,6 +157,13 @@ function createCellElement(tile, state) {
   if (tile.explored) {
     cell.classList.add('cell-explored');
 
+    // Add curse/blessing indicators if explored
+    if (tile.isCursed) {
+      cell.classList.add('cell-cursed');
+    } else if (tile.isBlessed) {
+      cell.classList.add('cell-blessed');
+    }
+
     // Add exit indicator if this is an exit
     if (tile.isExit) {
       cell.classList.add('cell-exit');
@@ -179,10 +186,17 @@ function createCellElement(tile, state) {
       cell.classList.add('cell-locked');
     }
 
-    // Show exit hint ONLY during lead phase (not in member phase)
-    // This prevents team members from seeing exit locations
-    if (tile.isExit && state.gameMode === 'lead') {
-      cell.classList.add('cell-exit-hint');
+    // LEAD PHASE: Show curse/blessing hints and exit hint
+    // This allows the leader to see special blocks and plan strategy
+    if (state.gameMode === 'lead') {
+      if (tile.isCursed) {
+        cell.classList.add('cell-curse-hint');
+      } else if (tile.isBlessed) {
+        cell.classList.add('cell-blessing-hint');
+      }
+      if (tile.isExit) {
+        cell.classList.add('cell-exit-hint');
+      }
     }
   }
 
@@ -204,6 +218,9 @@ function createCellElement(tile, state) {
  */
 function renderGamePhase(state) {
   els.roundCount.textContent = state.roundCount;
+
+  // Update curse indicator
+  updateCurseIndicator(state);
 
   if (state.gameMode === 'lead') {
     // Lead Captain Phase
@@ -462,6 +479,41 @@ function getUnlockedCells(tiles, adjacency) {
   });
 
   return Array.from(unlocked);
+}
+
+/**
+ * Update curse indicator display
+ * @param {Object} state - Game state
+ * @returns {void}
+ */
+function updateCurseIndicator(state) {
+  const curseIndicator = document.getElementById('curse-indicator');
+  const curseText = document.getElementById('curse-text');
+
+  if (curseIndicator && state.curseValue !== undefined) {
+    const blessingCount = state.blessingCount || 0;
+    let displayText = '';
+
+    if (state.curseValue > 0) {
+      // Show curse value when > 0 with blessing count
+      displayText = `💀 诅咒值: ${state.curseValue}/${state.numCurseBlocks}`;
+    } else {
+      // Show safe status with blessing count
+      displayText = `✨ 诅咒值: 0/${state.numCurseBlocks}`;
+    }
+
+    // Add blessing count if any
+    if (blessingCount > 0) {
+      displayText += ` | 🛡️ 护身符: ${blessingCount}`;
+    }
+
+    if (curseText) {
+      curseText.textContent = displayText;
+    } else {
+      curseIndicator.textContent = displayText;
+    }
+    curseIndicator.classList.remove('hidden');
+  }
 }
 
 // Initialize on DOM ready

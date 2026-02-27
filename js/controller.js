@@ -46,9 +46,11 @@ function onStartGame(event) {
   // Read user configuration from setup screen
   const gridSize = parseInt(document.getElementById('grid-size-input').value) || 6;
   const exitCount = parseInt(document.getElementById('exit-count-input').value) || 1;
+  const numCurseBlocks = parseInt(document.getElementById('curse-blocks-input').value) || 1;
+  const numBlessingBlocks = parseInt(document.getElementById('blessing-blocks-input').value) || 1;
 
   // Initialize game with user settings
-  initGame({ gridSize, exitCount });
+  initGame({ gridSize, exitCount, numCurseBlocks, numBlessingBlocks });
 
   // Cache DOM elements before rendering (needed for renderAll to set styles)
   cacheElements();
@@ -166,6 +168,19 @@ function onAssignWord() {
 
   if (!result.ok) {
     showTurnError(result.error);
+    // Show special feedback for curse at exit
+    if (result.cursedAtExit) {
+      flashScreen('error');
+      showFeedbackOverlay(`你被诅咒缠身 (${result.curseValue})！无法离开此地，请找到护身符消除诅咒`, 2000);
+
+      // Jump back to lead phase (gameMode already changed in gameEngine)
+      setTimeout(() => {
+        const updatedState = getState();
+        setSelectedCell(null);
+        clearTurnError();
+        renderGamePhase(updatedState);
+      }, 2000);
+    }
     return;
   }
 
@@ -181,9 +196,21 @@ function onAssignWord() {
   // Re-render map grid to show updated adjacent cells
   renderMapGrid(updatedState);
 
+  // Show appropriate feedback based on tile type
+  let feedbackMsg = `"${result.tile.word}" 已放置 · 第 ${updatedState.roundCount} 轮`;
+  if (result.tile.isBlessed) {
+    feedbackMsg += ` ✨ 获得护身符 (${updatedState.blessingCount})`;
+  } else if (result.tile.isCursed) {
+    if (result.blessingConsumed) {
+      feedbackMsg += ` 💀 诅咒被护身符抵消 (剩余护身符: ${updatedState.blessingCount})`;
+    } else {
+      feedbackMsg += ` 💀 诅咒值 +1 (${updatedState.curseValue})`;
+    }
+  }
+
   // Show feedback
   flashScreen('success');
-  showFeedbackOverlay(`"${result.tile.word}" 已放置 · 第 ${updatedState.roundCount} 轮`, 1500);
+  showFeedbackOverlay(feedbackMsg, 1500);
 
   // Add to history
   const historyEntry = {

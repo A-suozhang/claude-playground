@@ -32,6 +32,16 @@
             <input id="exit-count-input" type="number" min="1" max="5" value="1" class="setting-input">
           </div>
 
+          <div class="setting-group">
+            <label for="curse-blocks-input">诅咒区块数量</label>
+            <input id="curse-blocks-input" type="number" min="0" max="5" value="1" class="setting-input">
+          </div>
+
+          <div class="setting-group">
+            <label for="blessing-blocks-input">护身符区块数量</label>
+            <input id="blessing-blocks-input" type="number" min="0" max="5" value="1" class="setting-input">
+          </div>
+
           <button id="btn-start-game" class="btn btn-start-game">开始游戏</button>
         </div>
       </div>
@@ -60,6 +70,11 @@
             <span class="label">第</span>
             <span id="round-count" class="value">0</span>
             <span class="label">轮</span>
+          </div>
+
+          <!-- Curse Indicator -->
+          <div id="curse-indicator" class="curse-indicator hidden">
+            <span id="curse-text">💀 诅咒值: 0/1</span>
           </div>
 
           <!-- Lead Phase Panel -->

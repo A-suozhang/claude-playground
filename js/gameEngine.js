@@ -75,12 +75,57 @@ function initGame(options = {}) {
   // Track used words for prevention of duplicates
   const usedWords = new Set(initialWords.map(w => w.zh));
 
+  // Randomly select curse and blessing blocks
+  const curseBlocks = new Set();
+  const blessingBlocks = new Set();
+  const numCurseBlocks = options.numCurseBlocks || 1;
+  const numBlessingBlocks = options.numBlessingBlocks || 1;
+
+  // Get all non-initial tiles (using actual tile keys from map)
+  const initialCellSet = new Set(initialCells);
+  const availableCells = map.tiles
+    .filter(tile => !initialCellSet.has(tile.key))
+    .map(tile => tile.key);
+
+  // Randomly select curse blocks
+  for (let i = 0; i < Math.min(numCurseBlocks, availableCells.length); i++) {
+    const idx = Math.floor(Math.random() * availableCells.length);
+    const cellKey = availableCells[idx];
+    curseBlocks.add(cellKey);
+    availableCells.splice(idx, 1);
+  }
+
+  // Randomly select blessing blocks (from remaining cells)
+  for (let i = 0; i < Math.min(numBlessingBlocks, availableCells.length); i++) {
+    const idx = Math.floor(Math.random() * availableCells.length);
+    const cellKey = availableCells[idx];
+    blessingBlocks.add(cellKey);
+    availableCells.splice(idx, 1);
+  }
+
+  // Mark curse and blessing tiles
+  curseBlocks.forEach(cellKey => {
+    const tile = funcs.getTile(map.tiles, cellKey);
+    if (tile) tile.isCursed = true;
+  });
+
+  blessingBlocks.forEach(cellKey => {
+    const tile = funcs.getTile(map.tiles, cellKey);
+    if (tile) tile.isBlessed = true;
+  });
+
   STATE = {
     phase: 'playing',                    // 'playing' | 'won' | 'lost'
     gameMode: 'lead',                    // 'lead' (captain describes) | 'guess' (member assigns)
     map: map,
     roundCount: 0,
     usedWords: usedWords,
+    curseValue: 0,                       // Current curse accumulation
+    blessingCount: 0,                    // Number of blessings (amulets) collected
+    numCurseBlocks: numCurseBlocks,      // Configuration: how many curse blocks
+    numBlessingBlocks: numBlessingBlocks,// Configuration: how many blessing blocks
+    curseBlocks: curseBlocks,            // Set of cell keys that are curse blocks
+    blessingBlocks: blessingBlocks,      // Set of cell keys that are blessing blocks
     currentRound: {
       leadDescription: null,             // Description from captain
       word: null,                        // Word to be assigned (input by member)
@@ -230,6 +275,43 @@ function placeWordOnCell(cellKey) {
     return { ok: false, error: '该位置不相邻已探索区域，请选择相邻格子' };
   }
 
+  // PRE-CHECK: Calculate curse/blessing changes BEFORE modifying state
+  // This allows us to reject cursed-at-exit BEFORE marking the tile as explored
+  let newCurseValue = STATE.curseValue;
+  let newBlessingCount = STATE.blessingCount;
+
+  if (STATE.blessingBlocks.has(cellKey)) {
+    // Collect a blessing (amulet) - will be used to negate future curses
+    newBlessingCount++;
+  } else if (STATE.curseBlocks.has(cellKey)) {
+    // Encounter a curse - use blessing if available, otherwise accumulate curse
+    if (newBlessingCount > 0) {
+      newBlessingCount--;  // Consume one blessing
+    } else {
+      newCurseValue++;     // Accumulate curse if no blessing available
+    }
+  }
+
+  // CRITICAL: Check if this is an exit BEFORE modifying tile state
+  // If cursed at exit, reject WITHOUT marking explored (so player can try again after collecting blessing)
+  if (tile.isExit && newCurseValue > 0) {
+    // Change gameMode back to lead phase (user should not continue choosing)
+    STATE.gameMode = 'lead';
+    STATE.currentRound = {
+      leadDescription: null,
+      word: null,
+      selectedCell: null
+    };
+
+    return {
+      ok: false,
+      error: '你被诅咒缠身，无法离开这个地方！必须先找到护身符消除诅咒。',
+      cursedAtExit: true,
+      curseValue: newCurseValue
+    };
+  }
+
+  // NOW it's safe to modify state
   // Place word on cell
   const word = STATE.currentRound.word;
 
@@ -238,7 +320,11 @@ function placeWordOnCell(cellKey) {
   STATE.usedWords.add(word);
   STATE.roundCount++;
 
-  // Check if this is an exit
+  // Apply curse/blessing logic (now safe since we checked exit condition first)
+  STATE.curseValue = newCurseValue;
+  STATE.blessingCount = newBlessingCount;
+
+  // Check if this is an exit (now we know it's not cursed, so it's safe to exit)
   let exitReached = false;
   if (tile.isExit) {
     exitReached = true;
@@ -257,9 +343,14 @@ function placeWordOnCell(cellKey) {
     ok: true,
     exitReached: exitReached,
     newPhase: STATE.phase,
+    curseValue: STATE.curseValue,
+    blessingCount: STATE.blessingCount,
+    blessingConsumed: STATE.blessingBlocks.has(cellKey) === false && STATE.curseBlocks.has(cellKey) && newBlessingCount < STATE.blessingCount,
     tile: {
       key: cellKey,
-      word: word
+      word: word,
+      isCursed: STATE.curseBlocks.has(cellKey),
+      isBlessed: STATE.blessingBlocks.has(cellKey)
     }
   };
 }
@@ -309,10 +400,23 @@ function checkCellSelectable(cellKey) {
 function getState() {
   if (!STATE) return null;
 
-  // Convert Set to Array for serialization
-  const stateCopy = JSON.parse(JSON.stringify(STATE));
-  stateCopy.usedWords = Array.from(STATE.usedWords);
-  return stateCopy;
+  // Return a copy with Sets converted to Arrays for serialization
+  return {
+    phase: STATE.phase,
+    gameMode: STATE.gameMode,
+    map: STATE.map,
+    roundCount: STATE.roundCount,
+    usedWords: Array.from(STATE.usedWords),
+    curseValue: STATE.curseValue,
+    blessingCount: STATE.blessingCount,
+    numCurseBlocks: STATE.numCurseBlocks,
+    numBlessingBlocks: STATE.numBlessingBlocks,
+    curseBlocks: Array.from(STATE.curseBlocks || new Set()),
+    blessingBlocks: Array.from(STATE.blessingBlocks || new Set()),
+    currentRound: STATE.currentRound,
+    roundHistory: STATE.roundHistory,
+    config: STATE.config
+  };
 }
 
 /**
