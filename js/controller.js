@@ -4,6 +4,7 @@
 // AI Member Mode configuration
 let _aiMemberEnabled = false;
 let _aiApiKey = '';
+let _lastAiDecision = null; // Store last AI decision for history display
 
 /**
  * Initialize all event listeners
@@ -77,6 +78,9 @@ function onStartGame(event) {
 
   // Initialize game with user settings
   initGame({ gridSize, exitCount, numCurseBlocks, numBlessingBlocks });
+
+  // Reset AI decision storage at start of new game
+  _lastAiDecision = null;
 
   // Cache DOM elements before rendering (needed for renderAll to set styles)
   cacheElements();
@@ -243,12 +247,19 @@ function onAssignWord() {
   flashScreen('success');
   showFeedbackOverlay(feedbackMsg, 1500);
 
-  // Add to history
+  // Add to history (include AI decision if available)
   const historyEntry = {
     round: updatedState.roundCount,
     word: result.tile.word,
     cellKey: selectedCell
   };
+
+  // Attach AI decision details if this was an AI turn
+  if (_lastAiDecision && _aiMemberEnabled) {
+    historyEntry.aiDecision = _lastAiDecision;
+    _lastAiDecision = null; // Clear after use
+  }
+
   appendHistoryEntry(historyEntry);
 
   // Reset selection
@@ -451,6 +462,9 @@ function triggerAIMemberTurn() {
 
       // Get AI decision with full details
       const decision = await aiMemberDecide(state, _aiApiKey);
+
+      // Save AI decision for history display
+      _lastAiDecision = decision;
 
       // Hide thinking indicator
       if (thinkingIndicator) {
