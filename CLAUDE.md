@@ -19,9 +19,9 @@
 3. **代码质量**: 模块化架构 + 59个单元测试
 
 ### 最新 Commit
-- Hash: `0288d4a`
-- 主题: "feat: Enhance UI differentiation between lead and member phases"
-- 内容: UI 差异化 + 隐私保护 + 出口改进
+- Hash: `60aca79` (documentation) + `a196252` (implementation)
+- 主题: "fix: Implement fully dynamic hexagon grid layout with responsive sizing" + "docs: Add comprehensive grid layout documentation"
+- 内容: 完全动态的六边形网格布局，自适应所有 gridSize 值
 
 ### 🔄 工作流
 
@@ -101,7 +101,8 @@ python3 -m http.server 8000
 | `README.md` | 项目特性介绍 |
 | `QUICKSTART.md` | 5分钟快速开始 |
 | `IMPLEMENTATION.md` | 完整技术说明 (13KB) |
-| `UI_IMPROVEMENTS.md` | 最近 UI 改进 (9.4KB) |
+| `UI_IMPROVEMENTS.md` | UI 改进说明 (9.4KB) |
+| **`GRID_LAYOUT.md`** | **🆕 六边形网格布局完整指南** |
 
 ---
 
