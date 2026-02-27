@@ -127,7 +127,7 @@ async function callLLM(prompt, apiKey, timeoutMs = 15000) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'openrouter/free',
+        model: 'openai/gpt-oss-120b:free',
         messages: [
           {
             role: 'user',
@@ -350,7 +350,7 @@ async function aiMemberDecide(state, apiKey) {
           candidatesInfo: candidatesInfo,
           llmResponse: llmResponse,
           rawJson: llmResponse,
-          strategy: `LLM策略: llama-3.1-8b 基于语义相关性推理\n选中格子: "${parsed.selectedCell}"\n置信度: ${parsed.confidence.toFixed(2)}${retryCount > 0 ? `\n(重试 ${retryCount}/${maxRetries})` : ''}`
+          strategy: `LLM策略: GPT-OSS-120B 基于语义相关性推理\n选中格子: "${parsed.selectedCell}"\n置信度: ${parsed.confidence.toFixed(2)}${retryCount > 0 ? `\n(重试 ${retryCount}/${maxRetries})` : ''}`
         };
       }
 
