@@ -391,6 +391,100 @@ body {
   z-index: 1;
 }
 
+/* Curse Block Styling */
+.cell-cursed {
+  background: linear-gradient(135deg, rgba(154, 58, 58, 0.25) 0%, rgba(154, 58, 58, 0.15) 100%);
+  border-color: var(--accent-red);
+  border-width: 2px;
+  box-shadow: 0 0 16px rgba(154, 58, 58, 0.5), inset 0 0 12px rgba(154, 58, 58, 0.2);
+  position: relative;
+}
+
+.cell-cursed::before {
+  content: '💀';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.8rem;
+  opacity: 0.9;
+  z-index: 2;
+  animation: cursePulse 2s infinite;
+}
+
+@keyframes cursePulse {
+  0%, 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* Blessing Block Styling */
+.cell-blessed {
+  background: linear-gradient(135deg, rgba(122, 90, 154, 0.25) 0%, rgba(122, 90, 154, 0.15) 100%);
+  border-color: var(--accent-purple);
+  border-width: 2px;
+  box-shadow: 0 0 16px rgba(122, 90, 154, 0.5), inset 0 0 12px rgba(122, 90, 154, 0.2);
+  position: relative;
+}
+
+.cell-blessed::before {
+  content: '✨';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.8rem;
+  opacity: 0.9;
+  z-index: 2;
+  animation: blessingGlow 2s infinite;
+}
+
+@keyframes blessingGlow {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* Curse Block Hint (Leader can see unexplored curse blocks) */
+.cell-curse-hint {
+  background: linear-gradient(135deg, rgba(154, 58, 58, 0.15) 0%, rgba(154, 58, 58, 0.08) 100%);
+  border-color: rgba(154, 58, 58, 0.4);
+  border-width: 2px;
+  box-shadow: 0 0 12px rgba(154, 58, 58, 0.3);
+  position: relative;
+}
+
+.cell-curse-hint::before {
+  content: '💀';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.4rem;
+  opacity: 0.6;
+  z-index: 2;
+  animation: cursePulse 2s infinite;
+}
+
+/* Blessing Block Hint (Leader can see unexplored blessing blocks) */
+.cell-blessing-hint {
+  background: linear-gradient(135deg, rgba(122, 90, 154, 0.15) 0%, rgba(122, 90, 154, 0.08) 100%);
+  border-color: rgba(122, 90, 154, 0.4);
+  border-width: 2px;
+  box-shadow: 0 0 12px rgba(122, 90, 154, 0.3);
+  position: relative;
+}
+
+.cell-blessing-hint::before {
+  content: '✨';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.4rem;
+  opacity: 0.6;
+  z-index: 2;
+  animation: blessingGlow 2s infinite;
+}
+
 .cell-word {
   font-size: 0.75rem;
   line-height: 1.2;
@@ -503,6 +597,28 @@ body {
   font-size: 1.8rem;
   color: var(--accent-gold);
   display: block;
+}
+
+/* Curse Indicator */
+.curse-indicator {
+  text-align: center;
+  padding: 12px;
+  background: rgba(154, 58, 58, 0.1);
+  border: 1px solid rgba(154, 58, 58, 0.3);
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  color: var(--accent-red);
+  font-weight: 700;
+  animation: curseWarning 1s infinite;
+}
+
+.curse-indicator.hidden {
+  display: none;
+}
+
+@keyframes curseWarning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* Phase Panels - Base */
