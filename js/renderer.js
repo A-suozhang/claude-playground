@@ -450,7 +450,6 @@ function appendHistoryEntry(entry) {
         const toggle = header.querySelector('.history-item-toggle');
         if (toggle) toggle.classList.add('open');
       }
-      console.log('📜 History item toggled, isOpen:', !isOpen);
     });
     header.style.cursor = 'pointer';
   }
