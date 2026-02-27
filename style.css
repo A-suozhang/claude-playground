@@ -1155,9 +1155,10 @@ body {
 }
 
 .history-item-details.open {
-  max-height: 600px;
+  max-height: 500px;
   padding-top: 12px;
   padding-bottom: 12px;
+  overflow-y: auto;  /* Enable scrolling if content exceeds max-height */
 }
 
 .history-item-detail-section {
@@ -1187,6 +1188,27 @@ body {
   font-size: 0.8rem;
   line-height: 1.4;
   word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Scrollbar styling for detail values */
+.history-item-detail-value::-webkit-scrollbar {
+  width: 4px;
+}
+
+.history-item-detail-value::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-item-detail-value::-webkit-scrollbar-thumb {
+  background: rgba(200, 151, 58, 0.3);
+  border-radius: 2px;
+}
+
+.history-item-detail-value::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 151, 58, 0.5);
 }
 
 @keyframes fadeSlideIn {
