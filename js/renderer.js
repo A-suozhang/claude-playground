@@ -105,6 +105,15 @@ function renderAll(state) {
   const hexagonOverlapRatio = 0.5;
   els.mapGrid.style.rowGap = `${-columnWidth * hexagonOverlapRatio}px`;
 
+  // Calculate grid width including odd-row margin offsets and padding/border
+  // Odd rows (1, 3, 5...) have margin-left = columnWidth * 0.5
+  const offsetAmount = columnWidth * 0.5;
+  const contentWidth = (gridSize * columnWidth) + offsetAmount;
+  const padding = 20;  // .map-grid padding
+  const border = 2;    // .map-grid border
+  const gridWidth = contentWidth + (padding * 2) + (border * 2);
+  els.mapGrid.style.width = `${gridWidth}px`;
+
   // Update cell dimensions CSS variable
   document.documentElement.style.setProperty('--cell-size-dynamic', `${columnWidth}px`);
 

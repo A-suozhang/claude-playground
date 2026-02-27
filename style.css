@@ -233,20 +233,24 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 0;
+  min-width: fit-content;
+  overflow: auto;
 }
 
 .map-grid {
   display: grid;
   /* grid-template-columns set by JavaScript dynamically */
+  /* grid-auto-rows set by JavaScript dynamically */
   /* row-gap set by JavaScript dynamically */
+  /* width set by JavaScript dynamically (includes odd-row margin offset) */
   gap: 0;
   column-gap: 0;
   background: radial-gradient(circle at center, rgba(200, 151, 58, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
   padding: 20px;
   border-radius: var(--radius);
   border: 2px solid rgba(200, 151, 58, 0.25);
-  width: fit-content;
+  height: fit-content;
+  margin: auto;
 }
 
 .map-grid.hexagon-grid {
