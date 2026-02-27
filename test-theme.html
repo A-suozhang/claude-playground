@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme System Test</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <div id="setup-screen" class="screen setup-screen">
+      <!-- Theme Toggle Button -->
+      <button id="theme-toggle" class="theme-toggle" aria-label="切换主题">
+        <span class="theme-icon">🌙</span>
+      </button>
+
+      <div class="setup-container">
+        <h1>主题系统测试</h1>
+        <p class="setup-subtitle">点击右上角按钮切换主题</p>
+
+        <div class="test-results">
+          <h2>测试状态</h2>
+          <div id="test-status" style="color: var(--text-primary); font-size: 1.2rem; margin: 20px 0;">
+            等待测试...
+          </div>
+
+          <div style="margin: 20px 0; padding: 20px; background: var(--bg-panel); border-radius: 8px; border: 2px solid var(--accent-gold);">
+            <h3>当前主题:</h3>
+            <p>主题名称: <strong id="current-theme">loading...</strong></p>
+            <p>localStorage 值: <strong id="stored-theme">loading...</strong></p>
+            <p>HTML 类名: <strong id="html-class">loading...</strong></p>
+          </div>
+
+          <button id="test-toggle-btn" style="padding: 10px 20px; font-size: 1rem; cursor: pointer; margin: 10px 5px;">测试切换主题</button>
+          <button id="test-localStorage-btn" style="padding: 10px 20px; font-size: 1rem; cursor: pointer; margin: 10px 5px;">测试持久化</button>
+          <button id="clear-storage-btn" style="padding: 10px 20px; font-size: 1rem; cursor: pointer; margin: 10px 5px;">清除 localStorage</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme management functions (copy from controller.js)
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      setTheme(savedTheme);
+    }
+
+    function setTheme(theme) {
+      const html = document.documentElement;
+      if (theme === 'light') {
+        html.classList.remove('theme-dark');
+        html.classList.add('theme-light');
+        localStorage.setItem('theme', 'light');
+        updateThemeIcon('☀️');
+      } else {
+        html.classList.remove('theme-light');
+        html.classList.add('theme-dark');
+        localStorage.setItem('theme', 'dark');
+        updateThemeIcon('🌙');
+      }
+      updateTestStatus();
+    }
+
+    function getCurrentTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('theme-light')) return 'light';
+      if (html.classList.contains('theme-dark')) return 'dark';
+      return localStorage.getItem('theme') || 'dark';
+    }
+
+    function updateThemeIcon(icon) {
+      const iconElem = document.querySelector('.theme-icon');
+      if (iconElem) {
+        iconElem.textContent = icon;
+      }
+    }
+
+    function onThemeToggle() {
+      const currentTheme = getCurrentTheme();
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+    }
+
+    function updateTestStatus() {
+      const theme = getCurrentTheme();
+      const stored = localStorage.getItem('theme');
+      const htmlClass = document.documentElement.className;
+      const themeName = theme === 'light' ? '浅色主题 ☀️' : '深色主题 🌙';
+
+      document.getElementById('current-theme').textContent = themeName;
+      document.getElementById('stored-theme').textContent = stored || '未设置';
+      document.getElementById('html-class').textContent = htmlClass || '(empty)';
+
+      const testResult = theme && stored === theme ? '✅ 通过' : '❌ 失败';
+      document.getElementById('test-status').innerHTML = `
+        <span style="color: ${theme && stored === theme ? '#6ba85a' : '#b85c5c'};">
+          主题系统状态: ${testResult}
+        </span>
+      `;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+
+      // Bind events
+      document.getElementById('theme-toggle').addEventListener('click', onThemeToggle);
+      document.getElementById('test-toggle-btn').addEventListener('click', () => {
+        onThemeToggle();
+        console.log('Theme toggled');
+      });
+      document.getElementById('test-localStorage-btn').addEventListener('click', () => {
+        const stored = localStorage.getItem('theme');
+        const current = getCurrentTheme();
+        console.log(`Stored: ${stored}, Current: ${current}, Match: ${stored === current}`);
+        alert(`Stored: ${stored}\nCurrent: ${current}\nMatch: ${stored === current}`);
+      });
+      document.getElementById('clear-storage-btn').addEventListener('click', () => {
+        localStorage.removeItem('theme');
+        setTheme('dark');
+        console.log('Storage cleared and reset to dark');
+      });
+
+      updateTestStatus();
+    });
+  </script>
+</body>
+</html>

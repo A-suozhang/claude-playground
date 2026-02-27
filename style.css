@@ -1,7 +1,7 @@
 /* Landmarks Game - Complete Styling */
 
 :root {
-  /* Color Palette */
+  /* Color Palette - Default Dark Theme */
   --bg-void: #1a1510;
   --bg-panel: #232016;
   --bg-cell: #2e2a1e;
@@ -29,6 +29,48 @@
   /* Transitions */
   --transition-fast: 150ms ease-out;
   --transition-medium: 300ms ease-out;
+}
+
+/* Light Theme */
+:root.theme-light {
+  --bg-void: #f5f3f0;
+  --bg-panel: #ede8e3;
+  --bg-cell: #e8e0d8;
+  --bg-cell-hover: #dfd3c8;
+  --bg-cell-adjacent: #d9ccc0;
+  --bg-cell-revealed: #cebfb0;
+  --bg-button: #d9ccc0;
+  --bg-button-hover: #cebfb0;
+
+  --text-primary: #2a2520;
+  --text-secondary: #5c5348;
+  --text-muted: #8b7d6f;
+
+  --accent-gold: #d4a574;
+  --accent-green: #6ba85a;
+  --accent-red: #b85c5c;
+  --accent-purple: #9b7ab0;
+}
+
+/* Dark Theme */
+:root.theme-dark {
+  --bg-void: #0f0d0a;
+  --bg-panel: #1a1714;
+  --bg-cell: #24201a;
+  --bg-cell-hover: #2f2a22;
+  --bg-cell-adjacent: #332d24;
+  --bg-cell-revealed: #3d3629;
+  --bg-button: #332d24;
+  --bg-button-hover: #3d3629;
+
+  --text-primary: #e8dcc4;
+  --text-secondary: #bba878;
+  --text-muted: #8b7d5f;
+
+  --accent-gold: #e8c89e;
+  --accent-green: #72a550;
+  --accent-red: #d45959;
+  --accent-purple: #a083c0;
 }
 
 * {
@@ -1279,4 +1321,45 @@ body {
 .history-list::-webkit-scrollbar-thumb:hover,
 .side-panel::-webkit-scrollbar-thumb:hover {
   background: rgba(200, 151, 58, 0.5);
+}
+
+/* ============= THEME TOGGLE ============= */
+
+.theme-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--bg-button);
+  border: 2px solid var(--accent-gold);
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(200, 151, 58, 0.3);
+  background: var(--bg-button-hover);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+.theme-icon {
+  display: inline-block;
+  transition: transform var(--transition-fast);
+}
+
+.theme-toggle:hover .theme-icon {
+  transform: rotate(20deg);
 }

@@ -6,6 +6,13 @@
  * @returns {void}
  */
 function initController() {
+  // Theme toggle
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', onThemeToggle);
+  }
+  initTheme();
+
   // Game start menu
   document.querySelectorAll('.btn-start-game').forEach(btn => {
     btn.addEventListener('click', onStartGame);
@@ -242,6 +249,47 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initController);
 } else {
   initController();
+}
+
+// Theme management
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  setTheme(savedTheme);
+}
+
+function setTheme(theme) {
+  const html = document.documentElement;
+  if (theme === 'light') {
+    html.classList.remove('theme-dark');
+    html.classList.add('theme-light');
+    localStorage.setItem('theme', 'light');
+    updateThemeIcon('☀️');
+  } else {
+    html.classList.remove('theme-light');
+    html.classList.add('theme-dark');
+    localStorage.setItem('theme', 'dark');
+    updateThemeIcon('🌙');
+  }
+}
+
+function getCurrentTheme() {
+  const html = document.documentElement;
+  if (html.classList.contains('theme-light')) return 'light';
+  if (html.classList.contains('theme-dark')) return 'dark';
+  return localStorage.getItem('theme') || 'dark';
+}
+
+function updateThemeIcon(icon) {
+  const iconElem = document.querySelector('.theme-icon');
+  if (iconElem) {
+    iconElem.textContent = icon;
+  }
+}
+
+function onThemeToggle() {
+  const currentTheme = getCurrentTheme();
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  setTheme(newTheme);
 }
 
 // Expose functions for debugging
