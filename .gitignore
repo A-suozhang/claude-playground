@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .env
+link-stack-app/android-app/.gradle/
+link-stack-app/android-app/app/build/
+link-stack-app/android-app/local.properties
