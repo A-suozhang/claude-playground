@@ -56,6 +56,7 @@ def fetch_wechat_article(url: str, timeout: float = 20.0) -> WechatArticle:
         resp = client.get(url)
         resp.raise_for_status()
         html = resp.text
+        final_url = str(resp.url)
 
     soup = BeautifulSoup(html, "html.parser")
 
@@ -112,7 +113,7 @@ def fetch_wechat_article(url: str, timeout: float = 20.0) -> WechatArticle:
         )
 
     return WechatArticle(
-        url=url,
+        url=final_url,
         title=title,
         author=author,
         publish_time=publish_time,
