@@ -2,8 +2,9 @@ import argparse
 import hashlib
 import os
 import re
+import time
 from datetime import datetime
-from typing import List
+from typing import Optional, List
 from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
 
 import httpx
@@ -14,78 +15,6 @@ from openrouter_summary import summarize_with_openrouter
 from wechat_fetch import fetch_wechat_article
 
 
-def _clean_lines(text: str) -> List[str]:
-    lines = [re.sub(r"\s+", " ", ln).strip() for ln in text.splitlines()]
-    lines = [ln for ln in lines if ln]
-    filtered = []
-    skip_prefixes = (
-        "作者", "编辑", "推荐阅读", "未经", "转载", "本文核心来源", "//", "▎", "▪", "❌", "✅"
-    )
-    for ln in lines:
-        ln = re.sub(r"^[\-\*\•\·\■\□\▪\▎\|]+\s*", "", ln).strip()
-        ln = re.sub(r"^[（(]?[一二三四五六七八九十0-9]+[）)\.、]\s*", "", ln).strip()
-        if not ln:
-            continue
-        if len(ln) < 14:
-            continue
-        if ln.startswith(skip_prefixes):
-            continue
-        if re.fullmatch(r"\d{1,2}", ln):
-            continue
-        if re.fullmatch(r"[\W_]+", ln):
-            continue
-        if "http://" in ln or "https://" in ln:
-            continue
-        filtered.append(ln)
-    return filtered
-
-
-def _build_overview(text: str, max_items: int = 3) -> List[str]:
-    lines = _clean_lines(text)
-    if not lines:
-        return []
-    overview = []
-    for ln in lines:
-        if any(k in ln for k in ("是什么", "为什么", "核心", "结论", "意义", "本质")):
-            overview.append(ln)
-        if len(overview) >= max_items:
-            break
-    if len(overview) < max_items:
-        for ln in lines[:20]:
-            if ln not in overview:
-                overview.append(ln)
-            if len(overview) >= max_items:
-                break
-    return overview[:max_items]
-
-
-def _build_key_points(text: str, max_points: int = 6) -> List[str]:
-    lines = _clean_lines(text)
-    picks: List[str] = []
-    seen = set()
-
-    def add_point(line: str) -> None:
-        line = re.sub(r"\s+", " ", line).strip()
-        if not line or line in seen:
-            return
-        seen.add(line)
-        picks.append(line)
-
-    for ln in lines:
-        if any(k in ln for k in ["核心", "启示", "总结", "结论", "为什么", "关键", "差异", "风险", "本质"]):
-            add_point(ln)
-        if len(picks) >= max_points:
-            break
-
-    if len(picks) < max_points:
-        for ln in lines[:60]:
-            add_point(ln)
-            if len(picks) >= max_points:
-                break
-
-    return picks[:max_points]
-
-
 def _rt(text: str):
     return [{"type": "text", "text": {"content": text[:1800]}}]
 
@@ -94,12 +23,28 @@ def _paragraph(text: str):
     return {"object": "block", "type": "paragraph", "paragraph": {"rich_text": _rt(text)}}
 
 
-def _bulleted(text: str):
-    return {
-        "object": "block",
-        "type": "bulleted_list_item",
-        "bulleted_list_item": {"rich_text": _rt(text)},
-    }
+def _bulleted_nested(text: str, children: Optional[List[dict]] = None) -> dict:
+    payload = {"rich_text": _rt(text)}
+    if children:
+        payload["children"] = children
+    return {"object": "block", "type": "bulleted_list_item", "bulleted_list_item": payload}
+
+
+def _outline_node_to_block(node: dict, depth: int = 1) -> Optional[dict]:
+    text = str(node.get("text", "")).strip()
+    if not text:
+        return None
+    if depth >= 3:
+        return _bulleted_nested(text)
+    raw_children = node.get("children", [])
+    child_blocks: List[dict] = []
+    if isinstance(raw_children, list):
+        for child in raw_children:
+            if isinstance(child, dict):
+                cb = _outline_node_to_block(child, depth=depth + 1)
+                if cb:
+                    child_blocks.append(cb)
+    return _bulleted_nested(text, child_blocks)
 
 
 def _extract_plain_text_from_block(block: dict) -> str:
@@ -194,6 +139,17 @@ def _ensure_index_data_source_schema(notion: Client, data_source_id: str) -> Non
         "Canonical URL": {"url": {}},
         "Page URL": {"url": {}},
         "Source Type": {"rich_text": {}},
+        "Link Type": {
+            "select": {
+                "options": [
+                    {"name": "wechat_article", "color": "green"},
+                    {"name": "bilibili_video", "color": "red"},
+                    {"name": "article_link", "color": "blue"},
+                    {"name": "web_link", "color": "gray"},
+                ]
+            }
+        },
+        "Tags": {"multi_select": {"options": []}},
         "Status": {"select": {"options": [{"name": "synced", "color": "green"}]}},
         "Synced At": {"date": {}},
     }
@@ -242,6 +198,17 @@ def _ensure_index_database(notion: Client, parent_page_id: str) -> tuple:
             "Canonical URL": {"url": {}},
             "Page URL": {"url": {}},
             "Source Type": {"rich_text": {}},
+            "Link Type": {
+                "select": {
+                    "options": [
+                        {"name": "wechat_article", "color": "green"},
+                        {"name": "bilibili_video", "color": "red"},
+                        {"name": "article_link", "color": "blue"},
+                        {"name": "web_link", "color": "gray"},
+                    ]
+                }
+            },
+            "Tags": {"multi_select": {"options": []}},
             "Status": {"select": {"options": [{"name": "synced", "color": "green"}]}},
             "Synced At": {"date": {}},
         },
@@ -259,6 +226,8 @@ def _upsert_index_record(
     source_id: str,
     title: str,
     source_type: str,
+    link_type: str,
+    tags: List[str],
     source_url: str,
     canonical_url: str,
     page_url: str,
@@ -275,6 +244,8 @@ def _upsert_index_record(
         "Canonical URL": {"url": canonical_url[:2000]},
         "Page URL": {"url": page_url[:2000]},
         "Source Type": _rt_prop(source_type),
+        "Link Type": {"select": {"name": link_type}},
+        "Tags": {"multi_select": [{"name": t[:100]} for t in tags if t.strip()]},
         "Status": {"select": {"name": "synced"}},
         "Synced At": {"date": {"start": datetime.now().strftime("%Y-%m-%d")}},
     }
@@ -375,6 +346,17 @@ def fetch_generic_web_article(url: str, timeout: float = 20.0) -> dict:
     return {"url": final_url, "title": title, "content_text": content_text}
 
 
+def _detect_link_type(url: str, source_type: str) -> str:
+    host = (urlparse(url).hostname or "").lower()
+    if source_type == "wechat":
+        return "wechat_article"
+    if host in {"www.bilibili.com", "m.bilibili.com", "bilibili.com", "b23.tv"}:
+        return "bilibili_video"
+    if any(k in host for k in ["mp.weixin.qq.com", "medium.com", "substack.com"]):
+        return "article_link"
+    return "web_link"
+
+
 def sync_url_to_notion(url: str) -> str:
     token = os.environ.get("NOTION_ACCESS_TOKEN")
     parent_page_id = os.environ.get("NOTION_PARENT_PAGE_ID")
@@ -399,35 +381,56 @@ def sync_url_to_notion(url: str) -> str:
     canonical_url = normalize_source_url(article_url)
     source_id = build_source_id(canonical_url)
 
-    strict_llm = os.environ.get("SUMMARY_STRICT_LLM", "1") == "1"
     model_name = os.environ.get("OPENROUTER_MODEL") or "openai/gpt-4o-mini"
     summary_source = "openrouter"
-    try:
-        overview, points = summarize_with_openrouter(title, content_text)
-    except Exception as exc:
-        if strict_llm:
-            raise RuntimeError(f"OpenRouter summarization failed: {exc}") from exc
-        summary_source = "fallback_rules"
-        overview = _build_overview(content_text)
-        points = _build_key_points(content_text)
+    link_type = _detect_link_type(article_url, source_type)
+    max_retries = int(os.environ.get("SUMMARY_MAX_RETRIES", "3"))
+    retry_delay = float(os.environ.get("SUMMARY_RETRY_DELAY_SECONDS", "1.5"))
+    core_summary: List[str] = []
+    tags: List[str] = []
+    outline: List[dict] = []
+    for attempt in range(1, max_retries + 1):
+        try:
+            core_summary, tags, outline = summarize_with_openrouter(
+                title, content_text, content_kind=link_type
+            )
+            if not core_summary:
+                raise RuntimeError("LLM core_summary is empty")
+            if not outline:
+                raise RuntimeError("LLM outline is empty")
+            break
+        except Exception as exc:
+            if attempt < max_retries:
+                time.sleep(retry_delay * attempt)
+                continue
+            raise RuntimeError(
+                f"OpenRouter summarization failed after {max_retries} attempts: {exc}"
+            ) from exc
 
     children: List[dict] = []
     children.append(_paragraph(f"Source ID: {source_id}"))
     children.append(_paragraph(f"Source Type: {source_type}"))
     children.append(_paragraph(f"Summary Source: {summary_source}"))
     children.append(_paragraph(f"Summary Model: {model_name}"))
+    children.append(_paragraph(f"Link Type: {link_type}"))
+    children.append(_paragraph(f"Tags: {', '.join(tags)}"))
     children.append(_paragraph(f"Source URL: {article_url}"))
     children.append(_paragraph(f"Canonical URL: {canonical_url}"))
 
-    if overview:
-        children.append({"object": "block", "type": "heading_2", "heading_2": {"rich_text": _rt("Overview")}})
-        for item in overview:
-            children.append(_bulleted(item))
+    children.append(
+        {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _rt("Core Summary")}}
+    )
+    for item in core_summary:
+        children.append(_bulleted_nested(item))
 
-    if points:
-        children.append({"object": "block", "type": "heading_2", "heading_2": {"rich_text": _rt("Key Points")}})
-        for p in points:
-            children.append(_bulleted(p))
+    children.append(
+        {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _rt("Structured Rewrite")}}
+    )
+    for node in outline:
+        if isinstance(node, dict):
+            block = _outline_node_to_block(node)
+            if block:
+                children.append(block)
 
     include_preview = os.environ.get("INCLUDE_CONTENT_PREVIEW", "0") == "1"
     if include_preview:
@@ -457,6 +460,8 @@ def sync_url_to_notion(url: str) -> str:
             source_id=source_id,
             title=title,
             source_type=source_type,
+            link_type=link_type,
+            tags=tags,
             source_url=article_url,
             canonical_url=canonical_url,
             page_url=page_url,
@@ -487,6 +492,8 @@ def sync_url_to_notion(url: str) -> str:
         source_id=source_id,
         title=title,
         source_type=source_type,
+        link_type=link_type,
+        tags=tags,
         source_url=article_url,
         canonical_url=canonical_url,
         page_url=page_url,
