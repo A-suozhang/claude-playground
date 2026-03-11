@@ -3,6 +3,7 @@ import hashlib
 import os
 import re
 import time
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Optional, List
 from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
@@ -21,6 +22,19 @@ def _rt(text: str):
 
 def _paragraph(text: str):
     return {"object": "block", "type": "paragraph", "paragraph": {"rich_text": _rt(text)}}
+
+
+def _paragraph_with_link(label: str, url: str) -> dict:
+    return {
+        "object": "block",
+        "type": "paragraph",
+        "paragraph": {
+            "rich_text": [
+                {"type": "text", "text": {"content": f"{label}: "}},
+                {"type": "text", "text": {"content": url[:1800], "link": {"url": url[:2000]}}},
+            ]
+        },
+    }
 
 
 def _bulleted_nested(text: str, children: Optional[List[dict]] = None) -> dict:
@@ -312,6 +326,139 @@ def is_wechat_url(url: str) -> bool:
     return host == "mp.weixin.qq.com" or host.endswith(".mp.weixin.qq.com")
 
 
+def is_miromind_share_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    host = (parsed.hostname or "").lower()
+    path = parsed.path or ""
+    return host == "dr.miromind.ai" and path.startswith("/share/")
+
+
+def _extract_miromind_share_id(url: str) -> str:
+    try:
+        path = urlparse(url).path or ""
+    except Exception:
+        return ""
+    m = re.match(r"^/share/([0-9a-fA-F-]{36})/?$", path)
+    if not m:
+        return ""
+    return m.group(1)
+
+
+def _strip_think_blocks(text: str) -> str:
+    text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _iter_nested_texts(value: object, path: str = "") -> Iterable[tuple[str, str]]:
+    if isinstance(value, str):
+        yield path, value
+        return
+    if isinstance(value, list):
+        for idx, item in enumerate(value):
+            next_path = f"{path}.{idx}" if path else str(idx)
+            yield from _iter_nested_texts(item, next_path)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            next_path = f"{path}.{key}" if path else str(key)
+            yield from _iter_nested_texts(item, next_path)
+
+
+def _score_miromind_candidate(path: str, text: str) -> tuple[int, int]:
+    lower_path = path.lower()
+    score = 0
+    if ".payload.text" in lower_path:
+        score += 6
+    if any(k in lower_path for k in ["final", "answer", "response", "output"]):
+        score += 3
+    if any(k in lower_path for k in [".input.", ".result", ".search", ".tool"]):
+        score -= 4
+    if len(text) >= 180:
+        score += 2
+    if len(text) >= 600:
+        score += 2
+    return score, len(text)
+
+
+def _extract_miromind_assistant_text(content: object) -> str:
+    candidates: List[tuple[tuple[int, int], str]] = []
+    for path, raw_text in _iter_nested_texts(content):
+        text = _strip_think_blocks(raw_text)
+        if len(text) < 30:
+            continue
+        if text.startswith("{") and text.endswith("}") and len(text) > 200:
+            continue
+        score = _score_miromind_candidate(path, text)
+        candidates.append((score, text))
+    if not candidates:
+        return ""
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
+def fetch_miromind_share_article(url: str, timeout: float = 20.0) -> dict:
+    share_id = _extract_miromind_share_id(url)
+    if not share_id:
+        raise RuntimeError(f"Unsupported miromind share URL format: {url}")
+    parsed = urlparse(url)
+    base = f"{parsed.scheme or 'https'}://{parsed.netloc}"
+    api_url = f"{base}/api/share/{share_id}"
+    headers = {
+        "Accept": "application/json, text/plain, */*",
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/122.0.0.0 Safari/537.36"
+        ),
+    }
+    with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers) as client:
+        resp = client.get(api_url)
+        resp.raise_for_status()
+        payload = resp.json()
+
+    if not payload.get("success"):
+        msg = payload.get("message") or payload.get("error") or "unknown error"
+        raise RuntimeError(f"miromind share api returned unsuccessful response: {msg}")
+
+    data = payload.get("data") or {}
+    history = data.get("history") or []
+    if not isinstance(history, list) or not history:
+        raise RuntimeError("miromind share api returned empty history")
+
+    user_prompt = ""
+    assistant_answer = ""
+    for row in history:
+        if not isinstance(row, dict):
+            continue
+        role = str(row.get("role", "")).lower()
+        content = row.get("content")
+        if role == "user" and not user_prompt and isinstance(content, str):
+            user_prompt = content.strip()
+        elif role == "assistant" and not assistant_answer:
+            if isinstance(content, str):
+                assistant_answer = _strip_think_blocks(content)
+            else:
+                assistant_answer = _extract_miromind_assistant_text(content)
+
+    text_parts: List[str] = []
+    if user_prompt:
+        text_parts.append(f"User Prompt:\n{user_prompt}")
+    if assistant_answer:
+        text_parts.append(f"Assistant Answer:\n{assistant_answer}")
+
+    content_text = "\n\n".join(text_parts).strip()
+    if not content_text:
+        raise RuntimeError("miromind share api parsed no usable text content")
+
+    title_seed = user_prompt or f"Share {share_id}"
+    title = f"Miromind Share - {title_seed[:120]}"
+    return {"url": url, "title": title, "content_text": content_text}
+
+
 def fetch_generic_web_article(url: str, timeout: float = 20.0) -> dict:
     headers = {
         "User-Agent": (
@@ -372,7 +519,10 @@ def sync_url_to_notion(url: str) -> str:
         title = article.title or f"WeChat Article {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         content_text = article.content_text
     else:
-        article = fetch_generic_web_article(url)
+        if is_miromind_share_url(url):
+            article = fetch_miromind_share_article(url)
+        else:
+            article = fetch_generic_web_article(url)
         source_type = "web"
         article_url = article["url"]
         title = article["title"] or f"Web Article {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -414,7 +564,7 @@ def sync_url_to_notion(url: str) -> str:
     children.append(_paragraph(f"Summary Model: {model_name}"))
     children.append(_paragraph(f"Link Type: {link_type}"))
     children.append(_paragraph(f"Tags: {', '.join(tags)}"))
-    children.append(_paragraph(f"Source URL: {article_url}"))
+    children.append(_paragraph_with_link("Source URL", article_url))
     children.append(_paragraph(f"Canonical URL: {canonical_url}"))
 
     children.append(
