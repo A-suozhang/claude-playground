@@ -1,8 +1,10 @@
 import argparse
 import hashlib
+import json
 import os
 import re
 import time
+import xml.etree.ElementTree as ET
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Optional, List
@@ -336,6 +338,16 @@ def is_miromind_share_url(url: str) -> bool:
     return host == "dr.miromind.ai" and path.startswith("/share/")
 
 
+def is_xiaoyuzhou_episode_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    host = (parsed.hostname or "").lower()
+    path = parsed.path or ""
+    return "xiaoyuzhoufm.com" in host and path.startswith("/episode/")
+
+
 def _extract_miromind_share_id(url: str) -> str:
     try:
         path = urlparse(url).path or ""
@@ -415,7 +427,7 @@ def fetch_miromind_share_article(url: str, timeout: float = 20.0) -> dict:
             "Chrome/122.0.0.0 Safari/537.36"
         ),
     }
-    with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers) as client:
+    with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers, trust_env=False) as client:
         resp = client.get(api_url)
         resp.raise_for_status()
         payload = resp.json()
@@ -459,6 +471,248 @@ def fetch_miromind_share_article(url: str, timeout: float = 20.0) -> dict:
     return {"url": url, "title": title, "content_text": content_text}
 
 
+def _extract_xiaoyuzhou_episode_data(soup: BeautifulSoup) -> dict:
+    node = soup.find("script", id="__NEXT_DATA__")
+    if not node or not node.string:
+        return {}
+    try:
+        payload = json.loads(node.string)
+    except Exception:
+        return {}
+    episode = ((payload.get("props") or {}).get("pageProps") or {}).get("episode") or {}
+    return episode if isinstance(episode, dict) else {}
+
+
+def _find_first_audio_url(text: str) -> str:
+    candidates = re.findall(r"https?://[^\s\"'<>]+", text)
+    for url in candidates:
+        lower = url.lower()
+        if any(ext in lower for ext in [".m4a", ".mp3", ".mp4a", ".wav", ".webm"]):
+            return url
+        if "media.xyzcdn.net" in lower or "ximalaya.com" in lower:
+            return url
+    return ""
+
+
+def _html_to_plain_text(raw_html: str) -> str:
+    if not raw_html:
+        return ""
+    soup = BeautifulSoup(raw_html, "html.parser")
+    text = soup.get_text("\n")
+    lines = [re.sub(r"\s+", " ", ln).strip() for ln in text.splitlines()]
+    lines = [ln for ln in lines if ln]
+    return "\n".join(lines)
+
+
+def _extract_episode_id_from_xiaoyuzhou_url(url: str) -> str:
+    try:
+        path = urlparse(url).path or ""
+    except Exception:
+        return ""
+    m = re.match(r"^/episode/([^/?#]+)", path)
+    return m.group(1) if m else ""
+
+
+def _discover_rss_urls_from_xiaoyuzhou_html(soup: BeautifulSoup, html: str, episode: dict) -> List[str]:
+    urls: List[str] = []
+    for link in soup.find_all("link"):
+        href = (link.get("href") or "").strip()
+        typ = (link.get("type") or "").strip().lower()
+        rel = " ".join(link.get("rel") or []).lower() if isinstance(link.get("rel"), list) else ""
+        if not href:
+            continue
+        if "rss" in typ or "rss" in rel or "rss" in href.lower() or href.lower().endswith(".xml"):
+            urls.append(href)
+
+    podcast = episode.get("podcast") if isinstance(episode, dict) else None
+    if isinstance(podcast, dict):
+        for key in ["rss", "rssUrl", "rss_url", "feedUrl", "feed_url", "feed"]:
+            val = podcast.get(key)
+            if isinstance(val, str) and val.strip():
+                urls.append(val.strip())
+
+    urls.extend(re.findall(r"https?://[^\s\"'<>]+", html))
+    filtered: List[str] = []
+    for u in urls:
+        lu = u.lower()
+        if "rss" in lu or lu.endswith(".xml"):
+            filtered.append(u)
+
+    uniq: List[str] = []
+    seen = set()
+    for u in filtered:
+        if u in seen:
+            continue
+        seen.add(u)
+        uniq.append(u)
+    return uniq
+
+
+def _parse_rss_item_for_episode(feed_xml: str, episode_id: str, episode_url: str) -> dict:
+    try:
+        root = ET.fromstring(feed_xml)
+    except Exception:
+        return {}
+
+    channel = root.find("channel")
+    if channel is None:
+        return {}
+
+    episode_url_norm = normalize_source_url(episode_url)
+    best_item: ET.Element | None = None
+    for item in channel.findall("item"):
+        link = (item.findtext("link") or "").strip()
+        guid = (item.findtext("guid") or "").strip()
+        if episode_id and (episode_id in link or episode_id in guid):
+            best_item = item
+            break
+        if link and normalize_source_url(link) == episode_url_norm:
+            best_item = item
+            break
+
+    if not best_item:
+        return {}
+
+    title = (best_item.findtext("title") or "").strip()
+    description = (best_item.findtext("description") or "").strip()
+
+    content_encoded = ""
+    for child in list(best_item):
+        if isinstance(child.tag, str) and child.tag.endswith("encoded"):
+            content_encoded = (child.text or "").strip()
+            if content_encoded:
+                break
+
+    enclosure = best_item.find("enclosure")
+    audio_url = ""
+    if enclosure is not None and enclosure.get("url"):
+        audio_url = enclosure.get("url").strip()
+
+    notes_html = content_encoded or description
+    notes_text = _html_to_plain_text(notes_html)
+    return {"title": title, "shownotes_text": notes_text, "audio_url": audio_url}
+
+
+def fetch_xiaoyuzhou_episode_article(url: str, timeout: float = 30.0) -> dict:
+    headers = {
+        # Keep a minimal UA. Some richer browser-like UA profiles trigger anti-bot 403 here.
+        "User-Agent": "Mozilla/5.0",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    }
+    episode_id = _extract_episode_id_from_xiaoyuzhou_url(url)
+    candidate_urls: List[str] = []
+    if episode_id:
+        candidate_urls.append(f"https://www.xiaoyuzhoufm.com/episodes/{episode_id}")
+        candidate_urls.append(f"https://www.xiaoyuzhoufm.com/episode/{episode_id}")
+    candidate_urls.append(url)
+
+    html = ""
+    fetched_url = ""
+    with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers, trust_env=False) as client:
+        for candidate in candidate_urls:
+            try:
+                resp = client.get(candidate)
+                if not resp.is_success:
+                    continue
+                text = resp.text
+                # Prefer pages that actually contain Next.js data payload.
+                if "__NEXT_DATA__" not in text and candidate != candidate_urls[-1]:
+                    continue
+                html = text
+                fetched_url = str(resp.url)
+                break
+            except Exception:
+                continue
+
+    soup = BeautifulSoup(html or "", "html.parser")
+    episode = _extract_xiaoyuzhou_episode_data(soup)
+    episode_id = episode_id or _extract_episode_id_from_xiaoyuzhou_url(fetched_url or url)
+
+    og_title = soup.find("meta", attrs={"property": "og:title"})
+    og_desc = soup.find("meta", attrs={"property": "og:description"})
+
+    title = (episode.get("title") or "").strip()
+    if not title and og_title and og_title.get("content"):
+        title = og_title["content"].strip()
+    if not title:
+        t = soup.find("title")
+        title = t.get_text(strip=True) if t else (fetched_url or url)
+
+    description = (episode.get("description") or "").strip()
+    if not description and og_desc and og_desc.get("content"):
+        description = og_desc["content"].strip()
+
+    shownotes_html = str(episode.get("shownotes") or "")
+    shownotes_text = _html_to_plain_text(shownotes_html)
+
+    rss_urls = _discover_rss_urls_from_xiaoyuzhou_html(soup, html, episode)
+    rss_notes = ""
+    rss_audio_url = ""
+    used_rss_url = ""
+    with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers) as client:
+        for rss_url in rss_urls:
+            try:
+                feed_resp = client.get(rss_url)
+                if not feed_resp.is_success:
+                    continue
+                parsed = _parse_rss_item_for_episode(feed_resp.text, episode_id, fetched_url or url)
+                if not parsed:
+                    continue
+                used_rss_url = rss_url
+                if parsed.get("title"):
+                    title = parsed["title"]
+                rss_notes = parsed.get("shownotes_text", "")
+                rss_audio_url = parsed.get("audio_url", "")
+                break
+            except Exception:
+                continue
+
+    podcast_title = ""
+    podcast = episode.get("podcast")
+    if isinstance(podcast, dict):
+        podcast_title = str(podcast.get("title") or "").strip()
+    duration = episode.get("duration")
+
+    parts: List[str] = []
+    if podcast_title:
+        parts.append(f"Podcast: {podcast_title}")
+    if duration:
+        parts.append(f"Duration (seconds): {duration}")
+    if used_rss_url:
+        parts.append(f"RSS URL: {used_rss_url}")
+    if rss_audio_url:
+        parts.append(f"Audio URL (from RSS): {rss_audio_url}")
+
+    # Keep Notion input content focused on usable episode text instead of error strings.
+    notes_for_summary = ""
+    notes_source = ""
+    if rss_notes:
+        notes_for_summary = rss_notes
+        notes_source = "RSS"
+    elif shownotes_text:
+        notes_for_summary = shownotes_text
+        notes_source = "Page"
+    elif description:
+        notes_for_summary = description
+        notes_source = "Description"
+
+    if description and notes_source != "Description":
+        parts.append(f"Description:\n{description}")
+    if notes_for_summary:
+        parts.append(f"Show Notes (from {notes_source}):\n{notes_for_summary}")
+    else:
+        raise RuntimeError(
+            "Failed to read Xiaoyuzhou content (no RSS notes / page shownotes / description). "
+            "Source likely blocked by anti-bot (HTTP 403)."
+        )
+
+    content_text = "\n\n".join(parts).strip()
+    if not content_text:
+        raise RuntimeError("xiaoyuzhou episode parsed no usable text content")
+    # Keep source URL as original stack link for stable dedup/update.
+    return {"url": url, "title": title, "content_text": content_text}
+
+
 def fetch_generic_web_article(url: str, timeout: float = 20.0) -> dict:
     headers = {
         "User-Agent": (
@@ -499,7 +753,7 @@ def _detect_link_type(url: str, source_type: str) -> str:
         return "wechat_article"
     if host in {"www.bilibili.com", "m.bilibili.com", "bilibili.com", "b23.tv"}:
         return "bilibili_video"
-    if any(k in host for k in ["mp.weixin.qq.com", "medium.com", "substack.com"]):
+    if any(k in host for k in ["mp.weixin.qq.com", "medium.com", "substack.com", "xiaoyuzhoufm.com"]):
         return "article_link"
     return "web_link"
 
@@ -521,6 +775,8 @@ def sync_url_to_notion(url: str) -> str:
     else:
         if is_miromind_share_url(url):
             article = fetch_miromind_share_article(url)
+        elif is_xiaoyuzhou_episode_url(url):
+            article = fetch_xiaoyuzhou_episode_article(url)
         else:
             article = fetch_generic_web_article(url)
         source_type = "web"
